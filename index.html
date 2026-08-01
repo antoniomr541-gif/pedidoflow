@@ -1,152 +1,291 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PedidoFlow</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f7f7f7;color:#222}
-    header{background:#111;color:white;padding:18px;position:sticky;top:0;z-index:3}
-    .wrap{max-width:1100px;margin:auto;padding:18px}.hero{display:flex;justify-content:space-between;gap:16px;align-items:center}
-    .badge{background:#1f9d55;color:white;padding:6px 10px;border-radius:999px;font-size:13px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
-    .card{background:white;border-radius:16px;overflow:hidden;box-shadow:0 6px 22px rgba(0,0,0,.08)}
-    .card img{width:100%;height:150px;object-fit:cover;background:#ddd}.card .p{padding:14px}
-    button{border:0;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:bold}
-    .primary{background:#111;color:#fff}.add{width:100%;background:#ff6b00;color:#fff}
-    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.toolbar input,.toolbar select,.checkout input,.checkout select,.checkout textarea{
-      width:100%;padding:11px;border:1px solid #ccc;border-radius:10px
+    :root {
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --primary:#ef5b24;
+      --primary-dark:#cc4315;
+      --dark:#111827;
+      --success:#16a34a;
+      --border:#e5e7eb;
+      --shadow:0 12px 32px rgba(15,23,42,.08);
     }
-    .toolbar input{flex:1;min-width:220px}.toolbar select{width:220px}
-    .cart{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:14px 18px;border-radius:999px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
-    dialog{border:0;border-radius:18px;max-width:680px;width:95%;padding:0}.modal{padding:20px}.row{display:flex;justify-content:space-between;gap:12px;align-items:center}
-    .cart-item{padding:10px 0;border-bottom:1px solid #eee}.muted{color:#666;font-size:14px}.total{font-size:20px;font-weight:bold}
-    .checkout{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.full{grid-column:1/-1}
-    @media(max-width:640px){.checkout{grid-template-columns:1fr}.hero{align-items:flex-start;flex-direction:column}.cart{left:16px;right:16px;text-align:center}}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    button,input,select,textarea{font:inherit}
+    .container{max-width:1180px;margin:auto;padding:0 18px}
+    .topbar{background:var(--dark);color:#fff;padding:10px 0;font-size:14px}
+    .topbar-inner{display:flex;justify-content:space-between;gap:12px;align-items:center}
+    .status{display:inline-flex;align-items:center;gap:8px}
+    .dot{width:9px;height:9px;border-radius:50%;background:var(--success)}
+    .hero{background:linear-gradient(135deg,#111827 0%,#2f3643 60%,#ef5b24 160%);color:#fff;padding:28px 0 42px}
+    .hero-grid{display:grid;grid-template-columns:1.3fr .7fr;gap:24px;align-items:center}
+    .brand{display:flex;gap:14px;align-items:center}
+    .logo{width:58px;height:58px;border-radius:18px;background:var(--primary);display:grid;place-items:center;font-size:30px;box-shadow:0 12px 24px rgba(239,91,36,.25)}
+    h1{margin:0;font-size:clamp(28px,4vw,44px)}
+    .hero p{color:#d1d5db;max-width:640px;line-height:1.6}
+    .hero-card{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);backdrop-filter:blur(10px);padding:20px;border-radius:24px}
+    .hero-card strong{display:block;font-size:22px;margin-bottom:8px}
+    .search-wrap{margin-top:-22px;position:relative;z-index:2}
+    .search-box{background:#fff;padding:14px;border-radius:20px;box-shadow:var(--shadow);display:flex;gap:10px;align-items:center}
+    .search-box input{flex:1;border:0;outline:0;padding:12px 10px;font-size:16px}
+    .categories{display:flex;gap:10px;overflow:auto;padding:22px 2px 10px;scrollbar-width:none}
+    .categories::-webkit-scrollbar{display:none}
+    .chip{border:1px solid var(--border);background:#fff;padding:10px 14px;border-radius:999px;white-space:nowrap;cursor:pointer}
+    .chip.active{background:var(--dark);color:#fff;border-color:var(--dark)}
+    .section-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:20px 0}
+    .section-head h2{margin:0;font-size:26px}
+    .section-head span{color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;padding-bottom:110px}
+    .card{background:var(--card);border-radius:22px;overflow:hidden;box-shadow:var(--shadow);position:relative;border:1px solid rgba(229,231,235,.8);transition:.2s transform}
+    .card:hover{transform:translateY(-4px)}
+    .card-img{height:190px;width:100%;object-fit:cover;background:#e5e7eb}
+    .badge{position:absolute;top:14px;left:14px;background:#fff;color:var(--dark);padding:7px 10px;border-radius:999px;font-size:12px;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+    .card-body{padding:16px}
+    .category-label{font-size:12px;color:var(--primary);font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+    .card h3{margin:7px 0 8px;font-size:20px}
+    .description{color:var(--muted);font-size:14px;line-height:1.5;min-height:42px}
+    .price-row{display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:12px}
+    .price{font-size:22px;font-weight:800}
+    .add-btn{background:var(--primary);color:#fff;border:0;border-radius:13px;padding:11px 15px;font-weight:800;cursor:pointer}
+    .add-btn:hover{background:var(--primary-dark)}
+    .floating-cart{position:fixed;right:20px;bottom:20px;background:var(--dark);color:#fff;border:0;border-radius:18px;padding:14px 18px;font-weight:800;box-shadow:0 15px 35px rgba(17,24,39,.25);cursor:pointer;z-index:5}
+    .count{background:var(--primary);padding:3px 8px;border-radius:999px;margin-left:6px}
+    dialog{border:0;border-radius:24px;padding:0;width:min(720px,95%);box-shadow:0 30px 80px rgba(0,0,0,.3)}
+    dialog::backdrop{background:rgba(15,23,42,.65)}
+    .modal{padding:22px}
+    .modal-head{display:flex;justify-content:space-between;align-items:center}
+    .close{border:0;background:#f3f4f6;border-radius:12px;padding:9px 12px;cursor:pointer}
+    .cart-item{display:grid;grid-template-columns:1fr auto;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)}
+    .qty{display:flex;gap:8px;align-items:center}
+    .qty button{width:32px;height:32px;border:0;border-radius:10px;background:#f3f4f6;cursor:pointer}
+    .item-note{margin-top:8px;width:100%;padding:9px;border:1px solid var(--border);border-radius:10px}
+    .totals{background:#f9fafb;border-radius:16px;padding:14px;margin-top:16px}
+    .line{display:flex;justify-content:space-between;margin:8px 0}
+    .grand{font-size:20px;font-weight:800}
+    .checkout{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+    .checkout input,.checkout select,.checkout textarea{width:100%;padding:12px;border:1px solid var(--border);border-radius:12px}
+    .full{grid-column:1/-1}
+    .finish{width:100%;margin-top:14px;background:var(--success);color:white;border:0;border-radius:14px;padding:14px;font-weight:800;cursor:pointer}
+    .empty{background:#fff;border-radius:20px;padding:30px;text-align:center;color:var(--muted)}
+    @media(max-width:760px){
+      .hero-grid{grid-template-columns:1fr}
+      .hero-card{display:none}
+      .checkout{grid-template-columns:1fr}
+      .floating-cart{left:16px;right:16px}
+      .topbar-inner{font-size:12px}
+    }
   </style>
 </head>
 <body>
-<header>
-  <div class="wrap hero">
-    <div><h1 id="storeName" style="margin:0">PedidoFlow</h1><div class="muted" id="storeInfo" style="color:#ddd"></div></div>
-    <span class="badge" id="storeStatus">Aberto</span>
-  </div>
-</header>
-
-<main class="wrap">
-  <div class="toolbar">
-    <input id="search" placeholder="Buscar produtos..." />
-    <select id="category"><option value="">Todas as categorias</option></select>
-  </div>
-  <div id="products" class="grid"></div>
-</main>
-
-<button class="cart" onclick="openCart()">🛒 Ver carrinho (<span id="cartCount">0</span>)</button>
-
-<dialog id="cartDialog">
-  <div class="modal">
-    <div class="row"><h2>Seu pedido</h2><button onclick="cartDialog.close()">✕</button></div>
-    <div id="cartItems"></div>
-    <div class="row" style="margin-top:12px"><span>Subtotal</span><strong id="subtotal">R$ 0,00</strong></div>
-    <div class="row"><span>Entrega</span><strong id="deliveryFee">R$ 0,00</strong></div>
-    <div class="row total"><span>Total</span><span id="total">R$ 0,00</span></div>
-
-    <div class="checkout">
-      <input id="customerName" placeholder="Nome do cliente" />
-      <input id="customerPhone" placeholder="Telefone" />
-      <select id="deliveryType">
-        <option value="Entrega">Entrega</option>
-        <option value="Retirada">Retirada</option>
-      </select>
-      <select id="payment">
-        <option>Pix</option><option>Dinheiro</option><option>Cartão na entrega</option>
-      </select>
-      <input class="full" id="address" placeholder="Endereço completo" />
-      <input id="neighborhood" placeholder="Bairro" />
-      <input id="reference" placeholder="Ponto de referência" />
-      <textarea class="full" id="notes" placeholder="Observações do pedido"></textarea>
+  <div class="topbar">
+    <div class="container topbar-inner">
+      <div class="status"><span class="dot" id="statusDot"></span><span id="storeStatus">Loja aberta</span></div>
+      <div id="storeAddress">Jequié - BA</div>
     </div>
-    <button class="primary full" style="width:100%;margin-top:14px" onclick="sendWhatsApp()">Enviar pedido no WhatsApp</button>
   </div>
-</dialog>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-const SUPABASE_URL = 'https://ggdmqffnkpumjwmrqqzi.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc';
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  <section class="hero">
+    <div class="container hero-grid">
+      <div>
+        <div class="brand">
+          <div class="logo">🍔</div>
+          <div><h1 id="storeName">PedidoFlow Lanches</h1><p>Seu pedido pronto em poucos cliques. Escolha, finalize e envie direto para o WhatsApp.</p></div>
+        </div>
+      </div>
+      <div class="hero-card">
+        <strong>Entrega rápida</strong>
+        <span>Monte seu pedido e acompanhe tudo diretamente pelo WhatsApp da loja.</span>
+      </div>
+    </div>
+  </section>
 
-let products = [];
-let settings = {storeName:'PedidoFlow Lanches', whatsapp:'', deliveryFee:0, open:true, address:'', pixKey:''};
-let cart = [];
-const money = v => Number(v || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  <main class="container">
+    <div class="search-wrap">
+      <div class="search-box">🔎 <input id="search" placeholder="Busque hambúrguer, pizza, bebida..."></div>
+    </div>
+    <div class="categories" id="categories"></div>
 
-async function loadData() {
-  const [pRes, sRes] = await Promise.all([
-    db.from('produtos').select('*').order('id'),
-    db.from('configuracoes').select('*').order('id').limit(1).maybeSingle()
-  ]);
-  if (pRes.error) return showError('Não foi possível carregar os produtos: ' + pRes.error.message);
-  products = (pRes.data || []).map(p => ({
-    id:p.id, name:p.nome, price:Number(p.preco), category:p.categoria || 'Outros',
-    description:p.descricao || '', image:p.imagem_url || 'https://via.placeholder.com/600x400?text=Produto', active:p.ativo !== false
-  }));
-  if (sRes.data) settings = {
-    storeName:sRes.data.nome_loja, whatsapp:sRes.data.whatsapp,
-    deliveryFee:Number(sRes.data.taxa_entrega || 0), open:sRes.data.loja_aberta !== false,
-    address:sRes.data.endereco || '', pixKey:sRes.data.chave_pix || ''
-  };
-  renderHeader(); renderCategories(); renderProducts();
-}
-function showError(message) { document.getElementById('products').innerHTML = `<div class="card"><div class="p"><strong>Erro</strong><p>${message}</p></div></div>`; }
-function renderHeader() {
- document.getElementById('storeName').textContent=settings.storeName;
- document.getElementById('storeInfo').textContent=settings.address || '';
- const st=document.getElementById('storeStatus'); st.textContent=settings.open?'Aberto':'Fechado'; st.style.background=settings.open?'#1f9d55':'#b91c1c';
-}
-function renderCategories() {
- const cats=[...new Set(products.filter(p=>p.active).map(p=>p.category))];
- category.innerHTML='<option value="">Todas as categorias</option>'+cats.map(c=>`<option>${c}</option>`).join('');
-}
-function renderProducts() {
- const q=search.value.toLowerCase(), c=category.value;
- const list=products.filter(p=>p.active && (!c||p.category===c) && (p.name.toLowerCase().includes(q)||p.description.toLowerCase().includes(q)));
- document.getElementById('products').innerHTML=list.length?list.map(p=>`
- <article class="card"><img src="${p.image}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/600x400?text=Produto'">
- <div class="p"><div class="muted">${p.category}</div><h3>${p.name}</h3><p>${p.description}</p>
- <div class="row"><strong>${money(p.price)}</strong></div>
- <button class="add" onclick="addToCart(${p.id})">Adicionar</button></div></article>`).join(''):'<p>Nenhum produto disponível.</p>';
-}
-function addToCart(id) { const p=products.find(x=>x.id===id); const found=cart.find(x=>x.id===id); if(found) found.qty++; else cart.push({...p,qty:1}); updateCartCount(); }
-function updateCartCount() {cartCount.textContent=cart.reduce((a,b)=>a+b.qty,0)}
-function openCart() {renderCart();cartDialog.showModal()}
-function renderCart() {
- cartItems.innerHTML=cart.length?cart.map(i=>`<div class="cart-item row"><div><strong>${i.name}</strong><div class="muted">${money(i.price)} x ${i.qty}</div></div><div><button onclick="changeQty(${i.id},-1)">−</button> <button onclick="changeQty(${i.id},1)">+</button></div></div>`).join(''):'<p>Seu carrinho está vazio.</p>';
- const sub=cart.reduce((s,i)=>s+i.price*i.qty,0), fee=deliveryType.value==='Entrega'?Number(settings.deliveryFee||0):0;
- subtotal.textContent=money(sub); deliveryFee.textContent=money(fee); total.textContent=money(sub+fee);
-}
-function changeQty(id,d) {const i=cart.find(x=>x.id===id);if(!i)return;i.qty+=d;if(i.qty<=0)cart=cart.filter(x=>x.id!==id);updateCartCount();renderCart()}
-deliveryType.addEventListener('change',()=>{address.disabled=deliveryType.value==='Retirada';neighborhood.disabled=deliveryType.value==='Retirada';reference.disabled=deliveryType.value==='Retirada';renderCart()})
-function sendWhatsApp() {
- if(!settings.open) return alert('A loja está fechada no momento.');
- if(!cart.length) return alert('Adicione pelo menos um item.');
- if(!customerName.value.trim()) return alert('Informe seu nome.');
- if(deliveryType.value==='Entrega' && !address.value.trim()) return alert('Informe o endereço.');
- const sub=cart.reduce((s,i)=>s+i.price*i.qty,0), fee=deliveryType.value==='Entrega'?Number(settings.deliveryFee||0):0;
- const order=Math.floor(1000+Math.random()*9000);
- let lines=[`*NOVO PEDIDO #${order}*`,'',`*Cliente:* ${customerName.value}`,`*Telefone:* ${customerPhone.value}`,`*Tipo:* ${deliveryType.value}`];
- if(deliveryType.value==='Entrega') lines.push(`*Endereço:* ${address.value}`,`*Bairro:* ${neighborhood.value}`,`*Referência:* ${reference.value}`);
- lines.push(`*Pagamento:* ${payment.value}`,'','*ITENS:*');
- cart.forEach(i=>lines.push(`${i.qty}x ${i.name} - ${money(i.price*i.qty)}`));
- lines.push('',`*Subtotal:* ${money(sub)}`,`*Entrega:* ${money(fee)}`,`*TOTAL:* ${money(sub+fee)}`);
- if(notes.value) lines.push('',`*Observações:* ${notes.value}`);
- if(payment.value==='Pix' && settings.pixKey) lines.push(`*Chave Pix:* ${settings.pixKey}`);
- const phone=(settings.whatsapp||'').replace(/\D/g,'');
- if(phone.length<12) return alert('WhatsApp da loja inválido. Configure no painel.');
- window.open(`https://wa.me/${phone}?text=${encodeURIComponent(lines.join('\n'))}`,'_blank');
-}
-search.addEventListener('input',renderProducts); category.addEventListener('change',renderProducts);
-loadData();
-</script>
+    <div class="section-head">
+      <div><h2>Cardápio</h2><span id="productCount">0 produtos</span></div>
+    </div>
+
+    <div class="grid" id="products"></div>
+  </main>
+
+  <button class="floating-cart" onclick="openCart()">🛒 Ver carrinho <span class="count" id="cartCount">0</span></button>
+
+  <dialog id="cartDialog">
+    <div class="modal">
+      <div class="modal-head"><h2>Seu pedido</h2><button class="close" onclick="cartDialog.close()">✕</button></div>
+      <div id="cartItems"></div>
+
+      <div class="totals">
+        <div class="line"><span>Subtotal</span><strong id="subtotal">R$ 0,00</strong></div>
+        <div class="line"><span>Entrega</span><strong id="deliveryFee">R$ 0,00</strong></div>
+        <div class="line grand"><span>Total</span><span id="total">R$ 0,00</span></div>
+      </div>
+
+      <div class="checkout">
+        <input id="customerName" placeholder="Seu nome">
+        <input id="customerPhone" placeholder="Seu telefone">
+        <select id="deliveryType">
+          <option value="Entrega">Entrega</option>
+          <option value="Retirada">Retirada</option>
+        </select>
+        <select id="payment">
+          <option>Pix</option><option>Dinheiro</option><option>Cartão na entrega</option>
+        </select>
+        <input class="full" id="address" placeholder="Endereço completo">
+        <input id="neighborhood" placeholder="Bairro">
+        <input id="reference" placeholder="Ponto de referência">
+        <textarea class="full" id="generalNotes" placeholder="Observações gerais"></textarea>
+      </div>
+
+      <button class="finish" onclick="sendWhatsApp()">Enviar pedido pelo WhatsApp</button>
+    </div>
+  </dialog>
+
+  <script>
+    const db = supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
+    let products = [];
+    let settings = {nome_loja:'PedidoFlow Lanches',whatsapp:'5573999999999',taxa_entrega:5,endereco:'Jequié - BA',chave_pix:'',loja_aberta:true};
+    let cart = [];
+    let activeCategory = 'Todos';
+
+    const money = v => Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+    async function loadData(){
+      const [pRes,sRes] = await Promise.all([
+        db.from('produtos').select('*').eq('ativo',true).order('id'),
+        db.from('configuracoes').select('*').order('id').limit(1)
+      ]);
+      if(pRes.error) console.error(pRes.error);
+      products = pRes.data || [];
+      if(sRes.data && sRes.data.length) settings = sRes.data[0];
+      renderHeader(); renderCategories(); renderProducts();
+    }
+
+    function renderHeader(){
+      storeName.textContent = settings.nome_loja || 'PedidoFlow Lanches';
+      storeAddress.textContent = settings.endereco || '';
+      storeStatus.textContent = settings.loja_aberta ? 'Loja aberta' : 'Loja fechada';
+      statusDot.style.background = settings.loja_aberta ? '#16a34a' : '#dc2626';
+    }
+
+    function renderCategories(){
+      const cats = ['Todos', ...new Set(products.map(p=>p.categoria || 'Outros'))];
+      categories.innerHTML = cats.map(c=>`<button class="chip ${c===activeCategory?'active':''}" onclick="setCategory('${c.replaceAll("'","\'")}')">${c}</button>`).join('');
+    }
+
+    function setCategory(cat){
+      activeCategory = cat;
+      renderCategories();
+      renderProducts();
+    }
+
+    function renderProducts(){
+      const q = search.value.toLowerCase().trim();
+      const filtered = products.filter(p => {
+        const matchCategory = activeCategory==='Todos' || p.categoria===activeCategory;
+        const matchSearch = (p.nome||'').toLowerCase().includes(q) || (p.descricao||'').toLowerCase().includes(q);
+        return matchCategory && matchSearch;
+      });
+      productCount.textContent = `${filtered.length} produto${filtered.length===1?'':'s'}`;
+      productsEl = document.getElementById('products');
+      productsEl.innerHTML = filtered.length ? filtered.map((p,i)=>`
+        <article class="card">
+          ${i<2?'<span class="badge">Mais pedido</span>':''}
+          <img class="card-img" src="${p.imagem_url || 'https://via.placeholder.com/800x500?text=Produto'}" alt="${p.nome}" onerror="this.src='https://via.placeholder.com/800x500?text=Produto'">
+          <div class="card-body">
+            <div class="category-label">${p.categoria || 'Outros'}</div>
+            <h3>${p.nome}</h3>
+            <div class="description">${p.descricao || ''}</div>
+            <div class="price-row"><div class="price">${money(p.preco)}</div><button class="add-btn" onclick="addToCart(${p.id})">Adicionar</button></div>
+          </div>
+        </article>`).join('') : '<div class="empty full">Nenhum produto encontrado.</div>';
+    }
+
+    function addToCart(id){
+      const p = products.find(x=>x.id===id);
+      const found = cart.find(x=>x.id===id);
+      if(found) found.qty++;
+      else cart.push({...p,qty:1,note:''});
+      updateCartCount();
+    }
+
+    function updateCartCount(){ cartCount.textContent = cart.reduce((a,b)=>a+b.qty,0); }
+
+    function openCart(){ renderCart(); cartDialog.showModal(); }
+
+    function renderCart(){
+      cartItems.innerHTML = cart.length ? cart.map(i=>`
+        <div class="cart-item">
+          <div>
+            <strong>${i.nome}</strong>
+            <div style="color:#6b7280;margin-top:4px">${money(i.preco)} cada</div>
+            <input class="item-note" placeholder="Ex.: sem cebola" value="${i.note||''}" oninput="setNote(${i.id},this.value)">
+          </div>
+          <div class="qty"><button onclick="changeQty(${i.id},-1)">−</button><strong>${i.qty}</strong><button onclick="changeQty(${i.id},1)">+</button></div>
+        </div>`).join('') : '<div class="empty">Seu carrinho está vazio.</div>';
+      const sub = cart.reduce((s,i)=>s+Number(i.preco)*i.qty,0);
+      const fee = deliveryType.value==='Entrega' ? Number(settings.taxa_entrega||0) : 0;
+      subtotal.textContent = money(sub); deliveryFee.textContent = money(fee); total.textContent = money(sub+fee);
+    }
+
+    function changeQty(id,d){
+      const item = cart.find(x=>x.id===id);
+      if(!item) return;
+      item.qty += d;
+      if(item.qty<=0) cart = cart.filter(x=>x.id!==id);
+      updateCartCount(); renderCart();
+    }
+
+    function setNote(id,note){ const item=cart.find(x=>x.id===id); if(item) item.note=note; }
+
+    deliveryType.addEventListener('change',()=>{
+      const disabled = deliveryType.value==='Retirada';
+      address.disabled=disabled; neighborhood.disabled=disabled; reference.disabled=disabled;
+      renderCart();
+    });
+
+    function sendWhatsApp(){
+      if(!cart.length) return alert('Adicione pelo menos um produto.');
+      if(!customerName.value.trim()) return alert('Informe seu nome.');
+      if(deliveryType.value==='Entrega' && !address.value.trim()) return alert('Informe o endereço.');
+      if(!settings.loja_aberta) return alert('A loja está fechada no momento.');
+
+      const sub = cart.reduce((s,i)=>s+Number(i.preco)*i.qty,0);
+      const fee = deliveryType.value==='Entrega' ? Number(settings.taxa_entrega||0) : 0;
+      const order = Math.floor(1000+Math.random()*9000);
+
+      let text = `*NOVO PEDIDO #${order}*\n\n*Cliente:* ${customerName.value}\n*Telefone:* ${customerPhone.value}\n*Tipo:* ${deliveryType.value}\n`;
+      if(deliveryType.value==='Entrega') text += `*Endereço:* ${address.value}\n*Bairro:* ${neighborhood.value}\n*Referência:* ${reference.value}\n`;
+      text += `*Pagamento:* ${payment.value}\n\n*ITENS:*\n`;
+      cart.forEach(i=>{
+        text += `${i.qty}x ${i.nome} - ${money(Number(i.preco)*i.qty)}`;
+        if(i.note) text += ` (${i.note})`;
+        text += '\n';
+      });
+      text += `\n*Subtotal:* ${money(sub)}\n*Entrega:* ${money(fee)}\n*TOTAL:* ${money(sub+fee)}`;
+      if(generalNotes.value) text += `\n\n*Observações:* ${generalNotes.value}`;
+      if(payment.value==='Pix' && settings.chave_pix) text += `\n*Chave Pix:* ${settings.chave_pix}`;
+
+      const phone = (settings.whatsapp||'').replace(/\D/g,'');
+      if(phone.length<12) return alert('WhatsApp da loja inválido.');
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`,'_blank');
+    }
+
+    search.addEventListener('input',renderProducts);
+    loadData();
+  </script>
 </body>
 </html>

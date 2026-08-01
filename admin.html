@@ -1,114 +1,202 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Painel PedidoFlow</title>
-<style>
-*{box-sizing:border-box}body{font-family:Arial;margin:0;background:#f4f4f4;color:#222}.wrap{max-width:1000px;margin:auto;padding:20px}
-.card{background:white;border-radius:16px;padding:18px;margin-bottom:18px;box-shadow:0 6px 22px rgba(0,0,0,.07)}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:9px}
-button{border:0;padding:10px 14px;border-radius:9px;cursor:pointer;font-weight:bold}.primary{background:#111;color:white}.danger{background:#b91c1c;color:white}
-.item{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #eee;padding:12px 0}.muted{color:#666;font-size:14px}
-@media(max-width:650px){.grid{grid-template-columns:1fr}.item{flex-direction:column}}
-</style>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Painel PedidoFlow</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{--bg:#f5f6fa;--card:#fff;--dark:#111827;--primary:#ef5b24;--border:#e5e7eb;--muted:#6b7280}
+    *{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:#1f2937}
+    .layout{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+    aside{background:var(--dark);color:#fff;padding:24px}
+    aside h1{margin:0 0 30px;font-size:24px}aside a{color:#d1d5db;text-decoration:none;display:block;padding:11px 0}
+    main{padding:28px;max-width:1200px;width:100%}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:22px}
+    .top h2{margin:0;font-size:30px}
+    .card{background:#fff;border-radius:20px;padding:20px;box-shadow:0 10px 30px rgba(15,23,42,.07);margin-bottom:20px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    input,select,textarea{width:100%;padding:12px;border:1px solid var(--border);border-radius:12px}
+    textarea{min-height:90px}button{border:0;border-radius:12px;padding:11px 14px;font-weight:800;cursor:pointer}
+    .primary{background:var(--primary);color:#fff}.dark{background:var(--dark);color:#fff}.danger{background:#dc2626;color:#fff}
+    .product{display:grid;grid-template-columns:70px 1fr auto;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)}
+    .product img{width:70px;height:70px;object-fit:cover;border-radius:14px;background:#eee}
+    .muted{color:var(--muted);font-size:14px}.actions{display:flex;gap:8px;flex-wrap:wrap}
+    .full{grid-column:1/-1}
+    dialog{border:0;border-radius:20px;width:min(650px,95%);padding:0}dialog::backdrop{background:rgba(15,23,42,.65)}.modal{padding:20px}
+    @media(max-width:760px){.layout{grid-template-columns:1fr}aside{display:none}main{padding:16px}.grid{grid-template-columns:1fr}.product{grid-template-columns:55px 1fr}.actions{grid-column:1/-1}}
+  </style>
 </head>
-<body><div class="wrap">
-<h1>Painel PedidoFlow</h1>
-<p><a href="index.html">Abrir cardápio</a></p>
+<body>
+<div class="layout">
+  <aside>
+    <h1>PedidoFlow</h1>
+    <a href="index.html">Abrir cardápio</a>
+    <a href="#config">Configurações</a>
+    <a href="#products">Produtos</a>
+  </aside>
 
-<section class="card"><h2>Configurações da loja</h2>
-<div class="grid">
-<input id="storeName" placeholder="Nome da loja"><input id="whatsapp" placeholder="WhatsApp: 5573999999999">
-<input id="deliveryFee" type="number" step="0.01" placeholder="Taxa de entrega"><input id="storeAddress" placeholder="Cidade/endereço">
-<input id="pixKey" placeholder="Chave Pix"><select id="open"><option value="true">Loja aberta</option><option value="false">Loja fechada</option></select>
-</div><button class="primary" style="margin-top:12px" onclick="saveSettings()">Salvar configurações</button></section>
+  <main>
+    <div class="top"><div><div class="muted">Painel administrativo</div><h2>Gerenciar loja</h2></div><a href="index.html"><button class="dark">Ver cardápio</button></a></div>
 
-<section class="card"><h2>Cadastrar produto</h2>
-<div class="grid">
-<input id="name" placeholder="Nome do produto"><input id="price" type="number" step="0.01" placeholder="Preço">
-<input id="category" placeholder="Categoria"><input id="image" placeholder="URL da imagem">
-<textarea id="description" class="grid" placeholder="Descrição"></textarea>
-<select id="active"><option value="true">Ativo</option><option value="false">Oculto</option></select>
-</div><button class="primary" style="margin-top:12px" onclick="addProduct()">Adicionar produto</button></section>
+    <section class="card" id="config">
+      <h3>Configurações da loja</h3>
+      <div class="grid">
+        <input id="storeName" placeholder="Nome da loja">
+        <input id="whatsapp" placeholder="WhatsApp: 5573999999999">
+        <input id="deliveryFee" type="number" step="0.01" placeholder="Taxa de entrega">
+        <input id="storeAddress" placeholder="Endereço ou cidade">
+        <input id="pixKey" placeholder="Chave Pix">
+        <select id="open"><option value="true">Loja aberta</option><option value="false">Loja fechada</option></select>
+      </div>
+      <button class="primary" style="margin-top:14px" onclick="saveSettings()">Salvar configurações</button>
+    </section>
 
-<section class="card"><h2>Produtos</h2><div id="list"></div></section>
+    <section class="card">
+      <h3>Novo produto</h3>
+      <div class="grid">
+        <input id="name" placeholder="Nome do produto">
+        <input id="price" type="text" placeholder="Preço: 18,90">
+        <input id="category" placeholder="Categoria">
+        <input id="image" placeholder="URL da imagem">
+        <textarea class="full" id="description" placeholder="Descrição"></textarea>
+        <select id="active"><option value="true">Ativo</option><option value="false">Oculto</option></select>
+      </div>
+      <button class="primary" style="margin-top:14px" onclick="addProduct()">Cadastrar produto</button>
+    </section>
+
+    <section class="card" id="products">
+      <h3>Produtos cadastrados</h3>
+      <div id="list"></div>
+    </section>
+  </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<dialog id="editDialog">
+  <div class="modal">
+    <h3>Editar produto</h3>
+    <div class="grid">
+      <input id="editName" placeholder="Nome">
+      <input id="editPrice" placeholder="Preço">
+      <input id="editCategory" placeholder="Categoria">
+      <input id="editImage" placeholder="URL da imagem">
+      <textarea class="full" id="editDescription" placeholder="Descrição"></textarea>
+      <select id="editActive"><option value="true">Ativo</option><option value="false">Oculto</option></select>
+    </div>
+    <div class="actions" style="margin-top:14px">
+      <button class="primary" onclick="saveEdit()">Salvar alterações</button>
+      <button onclick="editDialog.close()">Cancelar</button>
+    </div>
+  </div>
+</dialog>
+
 <script>
-const SUPABASE_URL = 'https://ggdmqffnkpumjwmrqqzi.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc';
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-let settingsRowId = null;
+const db = supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
 let products = [];
+let settingsId = null;
+let editingId = null;
 
-async function load() {
-  const [sRes,pRes] = await Promise.all([
-    db.from('configuracoes').select('*').order('id').limit(1).maybeSingle(),
-    db.from('produtos').select('*').order('id')
-  ]);
-  if (sRes.error) alert('Erro nas configurações: '+sRes.error.message);
-  if (pRes.error) alert('Erro nos produtos: '+pRes.error.message);
-  if (sRes.data) {
-    settingsRowId=sRes.data.id; storeName.value=sRes.data.nome_loja||''; whatsapp.value=sRes.data.whatsapp||'';
-    deliveryFee.value=sRes.data.taxa_entrega||0; storeAddress.value=sRes.data.endereco||'';
-    pixKey.value=sRes.data.chave_pix||''; open.value=String(sRes.data.loja_aberta!==false);
-  }
-  products=pRes.data||[]; render();
+async function init(){
+  await Promise.all([reloadSettings(),reloadProducts()]);
 }
-async function saveSettings() {
-  const data={nome_loja:storeName.value||'PedidoFlow', whatsapp:whatsapp.value.replace(/\D/g,''), taxa_entrega:Number(deliveryFee.value||0), endereco:storeAddress.value, chave_pix:pixKey.value, loja_aberta:open.value==='true', atualizado_em:new Date().toISOString()};
-  const query=settingsRowId?db.from('configuracoes').update(data).eq('id',settingsRowId).select().single():db.from('configuracoes').insert(data).select().single();
-  const {data:row,error}=await query; if(error)return alert('Erro ao salvar: '+error.message); settingsRowId=row.id; alert('Configurações salvas na nuvem.');
+
+async function reloadSettings(){
+  const {data,error} = await db.from('configuracoes').select('*').order('id').limit(1);
+  if(error) return alert('Erro ao carregar configurações: '+error.message);
+  if(data && data.length){
+    const s=data[0]; settingsId=s.id;
+    storeName.value=s.nome_loja||''; whatsapp.value=s.whatsapp||''; deliveryFee.value=s.taxa_entrega||0;
+    storeAddress.value=s.endereco||''; pixKey.value=s.chave_pix||''; open.value=String(s.loja_aberta);
+  }
 }
-async function addProduct() {
-  const nameInput = document.getElementById('name');
-  const priceInput = document.getElementById('price');
-  const categoryInput = document.getElementById('category');
-  const imageInput = document.getElementById('image');
-  const descriptionInput = document.getElementById('description');
-  const activeInput = document.getElementById('active');
 
-  const productName = nameInput.value.trim();
-  const normalizedPrice = priceInput.value.replace(',', '.');
-  const productPrice = Number(normalizedPrice);
-
-  if (!productName) {
-    nameInput.focus();
-    return alert('Informe o nome do produto.');
-  }
-
-  if (!normalizedPrice || Number.isNaN(productPrice) || productPrice <= 0) {
-    priceInput.focus();
-    return alert('Informe um preço válido. Exemplo: 18,90');
-  }
-
-  const payload = {
-    nome: productName,
-    preco: productPrice,
-    categoria: categoryInput.value.trim() || 'Outros',
-    descricao: descriptionInput.value.trim(),
-    imagem_url: imageInput.value.trim(),
-    ativo: activeInput.value === 'true'
+async function saveSettings(){
+  const payload={
+    nome_loja:storeName.value.trim()||'PedidoFlow Lanches',
+    whatsapp:whatsapp.value.replace(/\D/g,''),
+    taxa_entrega:Number(String(deliveryFee.value).replace(',','.'))||0,
+    endereco:storeAddress.value.trim(),
+    chave_pix:pixKey.value.trim(),
+    loja_aberta:open.value==='true',
+    atualizado_em:new Date().toISOString()
   };
+  let error;
+  if(settingsId) ({error}=await db.from('configuracoes').update(payload).eq('id',settingsId));
+  else {
+    const res=await db.from('configuracoes').insert(payload).select().single(); error=res.error; if(res.data) settingsId=res.data.id;
+  }
+  if(error) return alert('Erro ao salvar: '+error.message);
+  alert('Configurações salvas.');
+}
 
-  const { error } = await db.from('produtos').insert(payload);
-  if (error) return alert('Erro ao cadastrar: ' + error.message);
+async function reloadProducts(){
+  const {data,error}=await db.from('produtos').select('*').order('id');
+  if(error) return alert('Erro ao carregar produtos: '+error.message);
+  products=data||[]; render();
+}
 
-  nameInput.value = '';
-  priceInput.value = '';
-  categoryInput.value = '';
-  imageInput.value = '';
-  descriptionInput.value = '';
-  activeInput.value = 'true';
+async function addProduct(){
+  const productName=document.getElementById('name').value.trim();
+  const productPrice=Number(document.getElementById('price').value.replace(',','.'));
+  if(!productName) return alert('Informe o nome.');
+  if(!productPrice || productPrice<=0) return alert('Informe um preço válido.');
 
+  const payload={
+    nome:productName,
+    preco:productPrice,
+    categoria:category.value.trim()||'Outros',
+    descricao:description.value.trim(),
+    imagem_url:image.value.trim(),
+    ativo:active.value==='true'
+  };
+  const {error}=await db.from('produtos').insert(payload);
+  if(error) return alert('Erro ao cadastrar: '+error.message);
+  name.value=price.value=category.value=image.value=description.value='';
+  active.value='true';
   alert('Produto cadastrado com sucesso.');
   await reloadProducts();
 }
-async function reloadProducts() { const {data,error}=await db.from('produtos').select('*').order('id'); if(error)return alert(error.message);products=data||[];render(); }
-async function removeProduct(id) { if(!confirm('Excluir este produto?'))return; const {error}=await db.from('produtos').delete().eq('id',id); if(error)return alert(error.message); await reloadProducts(); }
-async function toggleProduct(id) { const p=products.find(x=>x.id===id); const {error}=await db.from('produtos').update({ativo:!p.ativo}).eq('id',id); if(error)return alert(error.message); await reloadProducts(); }
-function render() {
- list.innerHTML=products.length?products.map(p=>`<div class="item"><div><strong>${p.nome}</strong><div class="muted">${p.categoria||'Outros'} • R$ ${Number(p.preco).toFixed(2)} • ${p.ativo?'Ativo':'Oculto'}</div></div><div><button onclick="toggleProduct(${p.id})">${p.ativo?'Ocultar':'Ativar'}</button> <button class="danger" onclick="removeProduct(${p.id})">Excluir</button></div></div>`).join(''):'<p>Nenhum produto cadastrado.</p>';
+
+function openEdit(id){
+  const p=products.find(x=>x.id===id); if(!p)return;
+  editingId=id; editName.value=p.nome||''; editPrice.value=p.preco||''; editCategory.value=p.categoria||'';
+  editImage.value=p.imagem_url||''; editDescription.value=p.descricao||''; editActive.value=String(p.ativo);
+  editDialog.showModal();
 }
-load();
-</script></body></html>
+
+async function saveEdit(){
+  const price=Number(editPrice.value.replace(',','.'));
+  if(!editName.value.trim() || !price) return alert('Informe nome e preço.');
+  const payload={nome:editName.value.trim(),preco:price,categoria:editCategory.value.trim()||'Outros',imagem_url:editImage.value.trim(),descricao:editDescription.value.trim(),ativo:editActive.value==='true'};
+  const {error}=await db.from('produtos').update(payload).eq('id',editingId);
+  if(error) return alert('Erro ao editar: '+error.message);
+  editDialog.close(); await reloadProducts();
+}
+
+async function toggleProduct(id,active){
+  const {error}=await db.from('produtos').update({ativo:!active}).eq('id',id);
+  if(error)return alert(error.message); await reloadProducts();
+}
+
+async function removeProduct(id){
+  if(!confirm('Excluir este produto?'))return;
+  const {error}=await db.from('produtos').delete().eq('id',id);
+  if(error)return alert(error.message); await reloadProducts();
+}
+
+function render(){
+  list.innerHTML=products.length?products.map(p=>`
+    <div class="product">
+      <img src="${p.imagem_url||'https://via.placeholder.com/200?text=Produto'}" onerror="this.src='https://via.placeholder.com/200?text=Produto'">
+      <div><strong>${p.nome}</strong><div class="muted">${p.categoria||'Outros'} • R$ ${Number(p.preco).toFixed(2).replace('.',',')} • ${p.ativo?'Ativo':'Oculto'}</div></div>
+      <div class="actions">
+        <button onclick="openEdit(${p.id})">Editar</button>
+        <button onclick="toggleProduct(${p.id},${p.ativo})">${p.ativo?'Ocultar':'Ativar'}</button>
+        <button class="danger" onclick="removeProduct(${p.id})">Excluir</button>
+      </div>
+    </div>`).join(''):'<p class="muted">Nenhum produto cadastrado.</p>';
+}
+
+init();
+</script>
+</body>
+</html>

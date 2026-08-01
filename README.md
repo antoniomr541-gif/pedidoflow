@@ -1,12 +1,17 @@
-# PedidoFlow com Supabase
+# PedidoFlow Visual Pro
 
-Esta versão usa o Supabase para sincronizar produtos e configurações entre aparelhos.
+Versão com:
+- visual profissional
+- categorias em botões
+- busca
+- badges de destaque
+- carrinho melhorado
+- observação por item
+- checkout completo
+- painel com edição de produtos
+- Supabase
+- WhatsApp
 
 ## Publicação
-Substitua no GitHub os arquivos `index.html`, `admin.html` e `README.md`. A Vercel fará um novo deploy automaticamente.
-
-## Atenção
-O painel ainda não possui login. As políticas atuais permitem alterações públicas para teste. A próxima etapa recomendada é adicionar autenticação e restringir escrita ao dono da loja.
-
-
-Correção: validação do nome e preço no painel administrativo.
+Substitua index.html, admin.html e README.md no repositório do GitHub.
+A Vercel publicará automaticamente.
