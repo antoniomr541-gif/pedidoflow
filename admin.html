@@ -61,10 +61,48 @@ async function saveSettings() {
   const {data:row,error}=await query; if(error)return alert('Erro ao salvar: '+error.message); settingsRowId=row.id; alert('Configurações salvas na nuvem.');
 }
 async function addProduct() {
-  if(!name.value||!price.value)return alert('Informe nome e preço.');
-  const payload={nome:name.value,preco:Number(price.value),categoria:category.value||'Outros',descricao:description.value||'',imagem_url:image.value||'',ativo:active.value==='true'};
-  const {error}=await db.from('produtos').insert(payload); if(error)return alert('Erro ao cadastrar: '+error.message);
-  name.value=price.value=category.value=image.value=description.value=''; await reloadProducts();
+  const nameInput = document.getElementById('name');
+  const priceInput = document.getElementById('price');
+  const categoryInput = document.getElementById('category');
+  const imageInput = document.getElementById('image');
+  const descriptionInput = document.getElementById('description');
+  const activeInput = document.getElementById('active');
+
+  const productName = nameInput.value.trim();
+  const normalizedPrice = priceInput.value.replace(',', '.');
+  const productPrice = Number(normalizedPrice);
+
+  if (!productName) {
+    nameInput.focus();
+    return alert('Informe o nome do produto.');
+  }
+
+  if (!normalizedPrice || Number.isNaN(productPrice) || productPrice <= 0) {
+    priceInput.focus();
+    return alert('Informe um preço válido. Exemplo: 18,90');
+  }
+
+  const payload = {
+    nome: productName,
+    preco: productPrice,
+    categoria: categoryInput.value.trim() || 'Outros',
+    descricao: descriptionInput.value.trim(),
+    imagem_url: imageInput.value.trim(),
+    ativo: activeInput.value === 'true'
+  };
+
+  const { error } = await db.from('produtos').insert(payload);
+  if (error) return alert('Erro ao cadastrar: ' + error.message);
+
+  nameInput.value = '';
+  priceInput.value = '';
+  categoryInput.value = '';
+  imageInput.value = '';
+  descriptionInput.value = '';
+  activeInput.value = 'true';
+
+  alert('Produto cadastrado com sucesso.');
+  await reloadProducts();
 }
 async function reloadProducts() { const {data,error}=await db.from('produtos').select('*').order('id'); if(error)return alert(error.message);products=data||[];render(); }
 async function removeProduct(id) { if(!confirm('Excluir este produto?'))return; const {error}=await db.from('produtos').delete().eq('id',id); if(error)return alert(error.message); await reloadProducts(); }

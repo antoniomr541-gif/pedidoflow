@@ -7,3 +7,6 @@ Substitua no GitHub os arquivos `index.html`, `admin.html` e `README.md`. A Verc
 
 ## Atenção
 O painel ainda não possui login. As políticas atuais permitem alterações públicas para teste. A próxima etapa recomendada é adicionar autenticação e restringir escrita ao dono da loja.
+
+
+Correção: validação do nome e preço no painel administrativo.
