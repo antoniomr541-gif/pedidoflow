@@ -1,121 +1,24 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Cliente | PedidoFlow</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:linear-gradient(135deg,#111827,#374151);min-height:100vh;display:grid;place-items:center;padding:18px}
-.card{width:min(440px,100%);background:#fff;border-radius:24px;padding:26px;box-shadow:0 30px 80px rgba(0,0,0,.3)}
-.logo{width:58px;height:58px;border-radius:18px;background:#ef5b24;color:#fff;display:grid;place-items:center;font-size:29px;margin-bottom:14px}
-h1{margin:0 0 6px}p{color:#6b7280;line-height:1.5}
-input{width:100%;padding:13px;border:1px solid #e5e7eb;border-radius:12px;margin-bottom:10px;font:inherit}
-button{width:100%;border:0;border-radius:13px;padding:13px;font-weight:800;cursor:pointer}
-.primary{background:#ef5b24;color:white}.secondary{background:#f3f4f6;margin-top:9px}
-.message{min-height:24px;margin-top:12px;font-size:14px}a{color:#ef5b24;text-decoration:none;font-weight:700}
-.sep{display:flex;align-items:center;gap:10px;color:#9ca3af;margin:16px 0;font-size:13px}.sep:before,.sep:after{content:"";height:1px;background:#e5e7eb;flex:1}
-</style>
-</head>
-<body>
-<div class="card">
-  <div class="logo">🍔</div>
-  <h1>Área do cliente</h1>
-  <p>Entre para acessar sua conta ou crie um cadastro.</p>
-
-  <input id="nameInput" placeholder="Seu nome">
-  <input id="emailInput" type="email" placeholder="E-mail">
-  <input id="passwordInput" type="password" placeholder="Senha (mínimo 6 caracteres)">
-
-  <button class="primary" onclick="signIn()">Entrar</button>
-  <div class="sep">ou</div>
-  <button class="secondary" onclick="signUp()">Criar conta de cliente</button>
-
-  <div id="messageElement" class="message"></div>
-  <p style="text-align:center;margin-bottom:0"><a href="index.html">Voltar ao cardápio</a></p>
-</div>
-
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cliente | PedidoFlow</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
+<body class="auth-body"><div class="auth-card"><div class="logo">🍔</div><h1>Área do cliente</h1><p class="muted">A conta é opcional. Use-a para histórico e promoções autorizadas.</p>
+<input id="nameInput" placeholder="Seu nome"><input id="phoneInput" placeholder="Celular com DDD"><input id="passwordInput" type="password" placeholder="Senha (mínimo 6 caracteres)">
+<label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0 12px;font-size:13px"><input id="marketingConsent" type="checkbox" style="width:auto;margin:2px 0 0"><span>Autorizo promoções pelo WhatsApp.</span></label>
+<button class="btn btn-primary" onclick="signIn()">Entrar</button><button class="btn btn-light" onclick="signUp()">Criar conta</button>
+<div id="messageElement" class="message"></div><p style="text-align:center"><a href="index.html">Voltar ao cardápio</a></p></div>
 <script>
-const db = supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
-const nameInput = document.getElementById('nameInput');
-const emailInput = document.getElementById('emailInput');
-const passwordInput = document.getElementById('passwordInput');
-const messageElement = document.getElementById('messageElement');
-
-function show(text, ok=false) {
-  messageElement.textContent = text;
-  messageElement.style.color = ok ? '#15803d' : '#b91c1c';
+const db=supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc'),digits=v=>String(v||'').replace(/\D/g,''),syntheticEmail=p=>`cliente_${digits(p)}@pedidoflow.local`;
+function show(t,ok=false){messageElement.textContent=t;messageElement.style.color=ok?'#15803d':'#b91c1c'}
+async function signUp(){
+ const nome=nameInput.value.trim(),phone=digits(phoneInput.value),password=passwordInput.value;
+ if(nome.length<3)return show('Informe um nome válido.');if(phone.length<10)return show('Informe um celular válido.');if(password.length<6)return show('A senha precisa ter 6 caracteres.');
+ const {data,error}=await db.auth.signUp({email:syntheticEmail(phone),password,options:{data:{nome,whatsapp:phone}}});
+ if(error)return show(error.message);if(!data.session)return show('No Supabase, desative Confirm email.');
+ const {error:profileError}=await db.from('perfis').upsert({id:data.user.id,nome,whatsapp:phone,aceita_promocoes:marketingConsent.checked,consentimento_em:marketingConsent.checked?new Date().toISOString():null,role:'cliente'},{onConflict:'id'});
+ if(profileError)return show(profileError.message);location.href='conta.html';
 }
-
-async function ensureClientProfile(user, customerName) {
-  if (!user) return;
-  await db.from('perfis').upsert({
-    id: user.id,
-    nome: customerName || user.user_metadata?.nome || '',
-    role: 'cliente'
-  }, { onConflict: 'id' });
+async function signIn(){
+ const phone=digits(phoneInput.value),password=passwordInput.value;if(phone.length<10)return show('Informe seu celular.');if(!password)return show('Informe a senha.');
+ const {data,error}=await db.auth.signInWithPassword({email:syntheticEmail(phone),password});if(error)return show('Celular ou senha inválidos.');
+ const {data:p}=await db.from('perfis').select('role').eq('id',data.user.id).single();if(p?.role==='dono'){await db.auth.signOut();return show('Use o acesso do dono.')}location.href='conta.html';
 }
-
-async function signUp() {
-  const customerName = nameInput.value.trim();
-  const customerEmail = emailInput.value.trim();
-  const customerPassword = passwordInput.value;
-
-  if (!customerName) return show('Informe seu nome.');
-  if (!customerEmail) return show('Informe seu e-mail.');
-  if (customerPassword.length < 6) return show('A senha precisa ter pelo menos 6 caracteres.');
-
-  show('Criando conta...', true);
-
-  const { data, error } = await db.auth.signUp({
-    email: customerEmail,
-    password: customerPassword,
-    options: { data: { nome: customerName } }
-  });
-
-  if (error) return show(error.message);
-
-  if (data.session) {
-    await ensureClientProfile(data.user, customerName);
-    location.href = 'conta.html';
-  } else {
-    show('Conta criada. Confira seu e-mail para confirmar o cadastro.', true);
-  }
-}
-
-async function signIn() {
-  const customerEmail = emailInput.value.trim();
-  const customerPassword = passwordInput.value;
-
-  if (!customerEmail) return show('Informe seu e-mail.');
-  if (!customerPassword) return show('Informe sua senha.');
-
-  show('Entrando...', true);
-
-  const { data, error } = await db.auth.signInWithPassword({
-    email: customerEmail,
-    password: customerPassword
-  });
-
-  if (error) return show('E-mail ou senha inválidos.');
-
-  const { data: profile } = await db.from('perfis').select('role,nome').eq('id', data.user.id).single();
-
-  if (profile?.role === 'dono') {
-    await db.auth.signOut();
-    return show('Esta conta pertence ao dono da loja. Use o acesso administrativo.');
-  }
-
-  if (!profile) await ensureClientProfile(data.user, data.user.user_metadata?.nome || '');
-  location.href = 'conta.html';
-}
-
-(async () => {
-  const { data } = await db.auth.getSession();
-  if (!data.session) return;
-  const { data: profile } = await db.from('perfis').select('role').eq('id', data.session.user.id).single();
-  if (profile?.role === 'cliente') location.href = 'conta.html';
-  if (profile?.role === 'dono') await db.auth.signOut();
-})();
-</script>
-</body>
-</html>
+</script></body></html>

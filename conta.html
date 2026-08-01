@@ -1,43 +1,17 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Minha conta | PedidoFlow</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f5f6fa;color:#1f2937}
-header{background:#111827;color:#fff;padding:18px}.wrap{max-width:850px;margin:auto;padding:20px}
-.card{background:#fff;border-radius:20px;padding:22px;box-shadow:0 10px 30px rgba(15,23,42,.08);margin-top:20px}
-.row{display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap}
-button,a.btn{border:0;border-radius:12px;padding:11px 14px;font-weight:800;cursor:pointer;text-decoration:none}
-.primary{background:#ef5b24;color:#fff}.secondary{background:#f3f4f6;color:#111827}.muted{color:#6b7280}
-</style>
-</head>
-<body>
-<header><div class="wrap row"><strong>🍔 PedidoFlow</strong><a class="btn secondary" href="index.html">Abrir cardápio</a></div></header>
-<main class="wrap">
-  <div class="card">
-    <div class="row"><div><div class="muted">Conta do cliente</div><h1 id="customerName">Carregando...</h1></div><button class="secondary" onclick="logout()">Sair</button></div>
-    <p id="customerEmail" class="muted"></p>
-  </div>
-  <div class="card">
-    <h2>Seus pedidos</h2>
-    <p class="muted">O login já está funcionando. O histórico aparecerá aqui quando adicionarmos o salvamento dos pedidos no banco.</p>
-    <a class="btn primary" href="index.html">Fazer um pedido</a>
-  </div>
-</main>
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Minha conta | PedidoFlow</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
+<body><div class="topbar"><div class="container topbar-inner"><strong>🍔 PedidoFlow</strong><div><a href="index.html">Cardápio</a> · <button class="btn btn-light" onclick="logout()">Sair</button></div></div></div>
+<main class="container" style="padding-top:20px"><div class="card"><div class="muted">Conta do cliente</div><h1 id="customerName">Carregando...</h1><p id="customerPhone" class="muted"></p></div>
+<div class="card"><div class="row"><h2>Seus pedidos</h2><a class="btn btn-primary" href="index.html">Fazer pedido</a></div><div id="orders"></div></div></main>
 <script>
-const db = supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
-async function init() {
-  const { data: { user } } = await db.auth.getUser();
-  if (!user) return location.href='login.html';
-  const { data: profile } = await db.from('perfis').select('nome,role').eq('id',user.id).single();
-  if (profile?.role === 'dono') return location.href='admin.html';
-  customerName.textContent = profile?.nome || user.user_metadata?.nome || 'Cliente';
-  customerEmail.textContent = user.email || '';
+const db=supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc'),money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+async function init(){
+ const {data:{user}}=await db.auth.getUser();if(!user)return location.href='login.html';
+ const {data:p}=await db.from('perfis').select('nome,role,whatsapp').eq('id',user.id).single();if(p?.role==='dono')return location.href='admin.html';
+ customerName.textContent=p?.nome||'Cliente';customerPhone.textContent=p?.whatsapp||'';
+ const {data,error}=await db.from('pedidos').select('*').eq('cliente_id',user.id).order('criado_em',{ascending:false});
+ if(error)return orders.innerHTML='<p class="muted">Erro ao carregar pedidos.</p>';
+ orders.innerHTML=data.length?data.map(o=>`<div class="list-item"><div class="row"><strong>Pedido #${o.numero}</strong><span class="status-pill">${o.status}</span></div><p class="muted">${new Date(o.criado_em).toLocaleString('pt-BR')}</p><strong>${money(o.total)}</strong></div>`).join(''):'<p class="muted">Você ainda não fez pedidos.</p>';
 }
-async function logout() { await db.auth.signOut(); location.href='index.html'; }
-init();
-</script>
-</body>
-</html>
+async function logout(){await db.auth.signOut();location.href='index.html'}init();
+</script></body></html>

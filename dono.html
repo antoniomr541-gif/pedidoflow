@@ -1,74 +1,14 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dono da loja | PedidoFlow</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#0f172a;min-height:100vh;display:grid;place-items:center;padding:18px}
-.card{width:min(420px,100%);background:#fff;border-radius:24px;padding:26px;box-shadow:0 30px 80px rgba(0,0,0,.4)}
-.badge{display:inline-block;background:#111827;color:#fff;padding:7px 11px;border-radius:999px;font-size:12px;font-weight:800;margin-bottom:14px}
-h1{margin:0 0 6px}p{color:#6b7280;line-height:1.5}
-input{width:100%;padding:13px;border:1px solid #e5e7eb;border-radius:12px;margin-bottom:10px;font:inherit}
-button{width:100%;border:0;border-radius:13px;padding:13px;background:#111827;color:#fff;font-weight:800;cursor:pointer}
-.message{min-height:24px;margin-top:12px;font-size:14px}a{color:#111827;text-decoration:none;font-weight:700}
-</style>
-</head>
-<body>
-<div class="card">
-  <span class="badge">ACESSO ADMINISTRATIVO</span>
-  <h1>Dono da loja</h1>
-  <p>Entre com a conta autorizada para gerenciar produtos e configurações.</p>
-
-  <input id="emailInput" type="email" placeholder="E-mail do dono">
-  <input id="passwordInput" type="password" placeholder="Senha">
-  <button onclick="ownerSignIn()">Entrar no painel</button>
-
-  <div id="messageElement" class="message"></div>
-  <p style="text-align:center;margin-bottom:0"><a href="index.html">Voltar ao cardápio</a></p>
-</div>
-
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dono | PedidoFlow</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
+<body class="auth-body"><div class="auth-card"><div class="logo" style="background:#111827">🔐</div><h1>Dono da loja</h1><p class="muted">Acesso administrativo exclusivo.</p>
+<input id="emailInput" type="email" placeholder="E-mail do dono"><input id="passwordInput" type="password" placeholder="Senha">
+<button class="btn btn-dark" onclick="ownerSignIn()">Entrar no painel</button><div id="messageElement" class="message"></div><p style="text-align:center"><a href="index.html">Voltar ao cardápio</a></p></div>
 <script>
-const db = supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
-const emailInput = document.getElementById('emailInput');
-const passwordInput = document.getElementById('passwordInput');
-const messageElement = document.getElementById('messageElement');
-
-function show(text, ok=false) {
-  messageElement.textContent = text;
-  messageElement.style.color = ok ? '#15803d' : '#b91c1c';
+const db=supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
+function show(t){messageElement.textContent=t;messageElement.style.color='#b91c1c'}
+async function ownerSignIn(){
+ const email=emailInput.value.trim(),password=passwordInput.value;if(!email||!password)return show('Informe e-mail e senha.');
+ const {data,error}=await db.auth.signInWithPassword({email,password});if(error)return show('E-mail ou senha inválidos.');
+ const {data:p}=await db.from('perfis').select('role').eq('id',data.user.id).single();if(p?.role!=='dono'){await db.auth.signOut();return show('Esta conta não possui acesso administrativo.')}location.href='admin.html';
 }
-
-async function ownerSignIn() {
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
-
-  if (!email) return show('Informe o e-mail.');
-  if (!password) return show('Informe a senha.');
-
-  show('Verificando acesso...', true);
-
-  const { data, error } = await db.auth.signInWithPassword({ email, password });
-  if (error) return show('E-mail ou senha inválidos.');
-
-  const { data: profile, error: profileError } = await db
-    .from('perfis').select('role').eq('id', data.user.id).single();
-
-  if (profileError || profile?.role !== 'dono') {
-    await db.auth.signOut();
-    return show('Esta conta não possui acesso administrativo.');
-  }
-
-  location.href = 'admin.html';
-}
-
-(async () => {
-  const { data } = await db.auth.getSession();
-  if (!data.session) return;
-  const { data: profile } = await db.from('perfis').select('role').eq('id', data.session.user.id).single();
-  if (profile?.role === 'dono') location.href = 'admin.html';
-  else await db.auth.signOut();
-})();
-</script>
-</body>
-</html>
+</script></body></html>

@@ -1,15 +1,28 @@
-# PedidoFlow — Logins Separados
+# PedidoFlow V3 — Versão para apresentação
 
-- index.html: cardápio público
-- login.html: login e cadastro de clientes
-- conta.html: área do cliente
-- dono.html: login exclusivo do dono, sem cadastro
-- admin.html: painel protegido
-- supabase-login.sql: regras e tabela de perfis
+## O que foi revisado
+- telefone aceita somente números e aplica máscara;
+- nome validado;
+- endereço, número e bairro obrigatórios para entrega;
+- retirada oculta os campos de endereço;
+- troco validado quando o pagamento é dinheiro;
+- dados do cliente ficam salvos no navegador;
+- pedidos aparecem no painel do dono;
+- pedido mostra cliente, telefone, endereço, pagamento, observações e itens;
+- alteração de status;
+- botão para abrir WhatsApp do cliente;
+- painel com contador de pedidos pendentes;
+- cardápio de demonstração incluso.
 
-## Publicação
-Envie todos os arquivos ao GitHub e faça commit. A Vercel atualiza automaticamente.
+## Instalação
+1. Execute `supabase-v3.sql`.
+2. Envie os arquivos HTML e `styles.css` ao GitHub.
+3. Crie a conta do dono no Supabase Authentication.
+4. Edite e execute `promover-dono.sql`.
+5. No painel, configure WhatsApp, Pix, taxa e status da loja.
 
-## Importante
-A conta do dono precisa existir no Supabase Auth e ter role = 'dono' na tabela perfis.
-Clientes criados pelo site recebem apenas role = 'cliente'.
+## Links
+- `/` cardápio
+- `/login.html` cliente
+- `/dono.html` dono
+- `/admin.html` painel

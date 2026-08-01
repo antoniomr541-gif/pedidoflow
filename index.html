@@ -1,305 +1,199 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PedidoFlow</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    :root {
-      --bg:#f6f7fb;
-      --card:#ffffff;
-      --text:#1f2937;
-      --muted:#6b7280;
-      --primary:#ef5b24;
-      --primary-dark:#cc4315;
-      --dark:#111827;
-      --success:#16a34a;
-      --border:#e5e7eb;
-      --shadow:0 12px 32px rgba(15,23,42,.08);
-    }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
-    button,input,select,textarea{font:inherit}
-    .container{max-width:1180px;margin:auto;padding:0 18px}
-    .topbar{background:var(--dark);color:#fff;padding:10px 0;font-size:14px}
-    .topbar-inner{display:flex;justify-content:space-between;gap:12px;align-items:center}
-    .status{display:inline-flex;align-items:center;gap:8px}
-    .dot{width:9px;height:9px;border-radius:50%;background:var(--success)}
-    .hero{background:linear-gradient(135deg,#111827 0%,#2f3643 60%,#ef5b24 160%);color:#fff;padding:28px 0 42px}
-    .hero-grid{display:grid;grid-template-columns:1.3fr .7fr;gap:24px;align-items:center}
-    .brand{display:flex;gap:14px;align-items:center}
-    .logo{width:58px;height:58px;border-radius:18px;background:var(--primary);display:grid;place-items:center;font-size:30px;box-shadow:0 12px 24px rgba(239,91,36,.25)}
-    h1{margin:0;font-size:clamp(28px,4vw,44px)}
-    .hero p{color:#d1d5db;max-width:640px;line-height:1.6}
-    .hero-card{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);backdrop-filter:blur(10px);padding:20px;border-radius:24px}
-    .hero-card strong{display:block;font-size:22px;margin-bottom:8px}
-    .search-wrap{margin-top:-22px;position:relative;z-index:2}
-    .search-box{background:#fff;padding:14px;border-radius:20px;box-shadow:var(--shadow);display:flex;gap:10px;align-items:center}
-    .search-box input{flex:1;border:0;outline:0;padding:12px 10px;font-size:16px}
-    .categories{display:flex;gap:10px;overflow:auto;padding:22px 2px 10px;scrollbar-width:none}
-    .categories::-webkit-scrollbar{display:none}
-    .chip{border:1px solid var(--border);background:#fff;padding:10px 14px;border-radius:999px;white-space:nowrap;cursor:pointer}
-    .chip.active{background:var(--dark);color:#fff;border-color:var(--dark)}
-    .section-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:20px 0}
-    .section-head h2{margin:0;font-size:26px}
-    .section-head span{color:var(--muted)}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;padding-bottom:110px}
-    .card{background:var(--card);border-radius:22px;overflow:hidden;box-shadow:var(--shadow);position:relative;border:1px solid rgba(229,231,235,.8);transition:.2s transform}
-    .card:hover{transform:translateY(-4px)}
-    .card-img{height:190px;width:100%;object-fit:cover;background:#e5e7eb}
-    .badge{position:absolute;top:14px;left:14px;background:#fff;color:var(--dark);padding:7px 10px;border-radius:999px;font-size:12px;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.12)}
-    .card-body{padding:16px}
-    .category-label{font-size:12px;color:var(--primary);font-weight:800;text-transform:uppercase;letter-spacing:.06em}
-    .card h3{margin:7px 0 8px;font-size:20px}
-    .description{color:var(--muted);font-size:14px;line-height:1.5;min-height:42px}
-    .price-row{display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:12px}
-    .price{font-size:22px;font-weight:800}
-    .add-btn{background:var(--primary);color:#fff;border:0;border-radius:13px;padding:11px 15px;font-weight:800;cursor:pointer}
-    .add-btn:hover{background:var(--primary-dark)}
-    .floating-cart{position:fixed;right:20px;bottom:20px;background:var(--dark);color:#fff;border:0;border-radius:18px;padding:14px 18px;font-weight:800;box-shadow:0 15px 35px rgba(17,24,39,.25);cursor:pointer;z-index:5}
-    .count{background:var(--primary);padding:3px 8px;border-radius:999px;margin-left:6px}
-    dialog{border:0;border-radius:24px;padding:0;width:min(720px,95%);box-shadow:0 30px 80px rgba(0,0,0,.3)}
-    dialog::backdrop{background:rgba(15,23,42,.65)}
-    .modal{padding:22px}
-    .modal-head{display:flex;justify-content:space-between;align-items:center}
-    .close{border:0;background:#f3f4f6;border-radius:12px;padding:9px 12px;cursor:pointer}
-    .cart-item{display:grid;grid-template-columns:1fr auto;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)}
-    .qty{display:flex;gap:8px;align-items:center}
-    .qty button{width:32px;height:32px;border:0;border-radius:10px;background:#f3f4f6;cursor:pointer}
-    .item-note{margin-top:8px;width:100%;padding:9px;border:1px solid var(--border);border-radius:10px}
-    .totals{background:#f9fafb;border-radius:16px;padding:14px;margin-top:16px}
-    .line{display:flex;justify-content:space-between;margin:8px 0}
-    .grand{font-size:20px;font-weight:800}
-    .checkout{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
-    .checkout input,.checkout select,.checkout textarea{width:100%;padding:12px;border:1px solid var(--border);border-radius:12px}
-    .full{grid-column:1/-1}
-    .finish{width:100%;margin-top:14px;background:var(--success);color:white;border:0;border-radius:14px;padding:14px;font-weight:800;cursor:pointer}
-    .empty{background:#fff;border-radius:20px;padding:30px;text-align:center;color:var(--muted)}
-    @media(max-width:760px){
-      .hero-grid{grid-template-columns:1fr}
-      .hero-card{display:none}
-      .checkout{grid-template-columns:1fr}
-      .floating-cart{left:16px;right:16px}
-      .topbar-inner{font-size:12px}
-    }
-  </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PedidoFlow</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <div class="topbar">
-    <div class="container topbar-inner">
-      <div class="status"><span class="dot" id="statusDot"></span><span id="storeStatus">Loja aberta</span></div>
-      <div><span id="storeAddress">Jequié - BA</span> · <a id="accountLink" href="login.html" style="color:#fff;font-weight:800;text-decoration:none">Entrar</a></div>
-    </div>
+<div class="topbar"><div class="container topbar-inner">
+  <div id="storeStatus">Loja aberta</div>
+  <div><span id="storeAddress">Jequié - BA</span> · <a id="accountLink" href="login.html"><strong>Entrar (opcional)</strong></a></div>
+</div></div>
+
+<section class="hero"><div class="container hero-grid">
+  <div class="brand"><div class="logo">🍔</div><div>
+    <h1 id="storeName">PedidoFlow Lanches</h1>
+    <p>Escolha seus produtos, informe os dados da entrega e envie o pedido organizado para o WhatsApp.</p>
+  </div></div>
+  <div class="hero-card"><strong>Pedido rápido e organizado</strong><p>Sem cadastro obrigatório. A conta é opcional para histórico e promoções.</p></div>
+</div></section>
+
+<main class="container">
+  <div class="search-wrap"><div class="search-box">🔎 <input id="search" placeholder="Busque hambúrguer, pizza, bebida..."></div></div>
+  <div class="categories" id="categories"></div>
+  <div class="section-head"><div><h2>Cardápio</h2><span id="productCount">0 produtos</span></div></div>
+  <div class="grid-products" id="products"></div>
+</main>
+
+<button class="floating-cart" onclick="openCart()">🛒 Ver carrinho <span class="count" id="cartCount">0</span></button>
+
+<dialog id="cartDialog"><div class="modal">
+  <div class="row"><h2>Finalizar pedido</h2><button class="btn btn-light" onclick="cartDialog.close()">✕</button></div>
+  <div id="cartItems"></div>
+
+  <div class="totals">
+    <div class="line"><span>Subtotal</span><strong id="subtotal">R$ 0,00</strong></div>
+    <div class="line"><span>Entrega</span><strong id="deliveryFee">R$ 0,00</strong></div>
+    <div class="line grand"><span>Total</span><span id="total">R$ 0,00</span></div>
   </div>
 
-  <section class="hero">
-    <div class="container hero-grid">
-      <div>
-        <div class="brand">
-          <div class="logo">🍔</div>
-          <div><h1 id="storeName">PedidoFlow Lanches</h1><p>Seu pedido pronto em poucos cliques. Escolha, finalize e envie direto para o WhatsApp.</p></div>
-        </div>
-      </div>
-      <div class="hero-card">
-        <strong>Entrega rápida</strong>
-        <span>Monte seu pedido e acompanhe tudo diretamente pelo WhatsApp da loja.</span>
-      </div>
-    </div>
-  </section>
+  <div class="checkout">
+    <div class="field"><label>Nome *</label><input id="customerName" maxlength="80" placeholder="Seu nome"><div id="nameError" class="error-text"></div></div>
+    <div class="field"><label>WhatsApp *</label><input id="customerPhone" inputmode="numeric" maxlength="15" placeholder="(73) 99999-9999"><div id="phoneError" class="error-text"></div></div>
+    <div class="field"><label>Recebimento *</label><select id="deliveryType"><option>Entrega</option><option>Retirada</option></select></div>
+    <div class="field"><label>Pagamento *</label><select id="payment"><option>Pix</option><option>Dinheiro</option><option>Cartão na entrega</option></select></div>
 
-  <main class="container">
-    <div class="search-wrap">
-      <div class="search-box">🔎 <input id="search" placeholder="Busque hambúrguer, pizza, bebida..."></div>
-    </div>
-    <div class="categories" id="categories"></div>
-
-    <div class="section-head">
-      <div><h2>Cardápio</h2><span id="productCount">0 produtos</span></div>
+    <div id="deliveryFields" class="full checkout" style="margin-top:0">
+      <div class="field full"><label>Rua/avenida *</label><input id="address" placeholder="Ex.: Rua das Flores"><div id="addressError" class="error-text"></div></div>
+      <div class="field"><label>Número *</label><input id="addressNumber" inputmode="numeric" maxlength="8" placeholder="123"><div id="numberError" class="error-text"></div></div>
+      <div class="field"><label>Bairro *</label><input id="neighborhood" placeholder="Centro"><div id="neighborhoodError" class="error-text"></div></div>
+      <div class="field full"><label>Ponto de referência</label><input id="reference" placeholder="Próximo à praça..."></div>
     </div>
 
-    <div class="grid" id="products"></div>
-  </main>
+    <div id="changeField" class="field full hidden"><label>Troco para quanto?</label><input id="changeFor" inputmode="decimal" placeholder="Ex.: 100,00"><div id="changeError" class="error-text"></div></div>
+    <div class="field full"><label>Observações gerais</label><textarea id="generalNotes" placeholder="Ex.: retirar cebola, tocar interfone..."></textarea></div>
+  </div>
 
-  <button class="floating-cart" onclick="openCart()">🛒 Ver carrinho <span class="count" id="cartCount">0</span></button>
+  <button class="btn btn-success full" style="width:100%;margin-top:14px" onclick="sendOrder()">Enviar pedido pelo WhatsApp</button>
+</div></dialog>
 
-  <dialog id="cartDialog">
-    <div class="modal">
-      <div class="modal-head"><h2>Seu pedido</h2><button class="close" onclick="cartDialog.close()">✕</button></div>
-      <div id="cartItems"></div>
+<footer><a href="dono.html">Acesso administrativo</a></footer>
 
-      <div class="totals">
-        <div class="line"><span>Subtotal</span><strong id="subtotal">R$ 0,00</strong></div>
-        <div class="line"><span>Entrega</span><strong id="deliveryFee">R$ 0,00</strong></div>
-        <div class="line grand"><span>Total</span><span id="total">R$ 0,00</span></div>
-      </div>
+<script>
+const db=supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
+let products=[],settings={nome_loja:'PedidoFlow Lanches',whatsapp:'5573999999999',taxa_entrega:5,endereco:'Jequié - BA',chave_pix:'',loja_aberta:true},cart=[],activeCategory='Todos';
+const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const digits=v=>String(v||'').replace(/\D/g,'');
 
-      <div class="checkout">
-        <input id="customerName" placeholder="Seu nome">
-        <input id="customerPhone" placeholder="Seu telefone">
-        <select id="deliveryType">
-          <option value="Entrega">Entrega</option>
-          <option value="Retirada">Retirada</option>
-        </select>
-        <select id="payment">
-          <option>Pix</option><option>Dinheiro</option><option>Cartão na entrega</option>
-        </select>
-        <input class="full" id="address" placeholder="Endereço completo">
-        <input id="neighborhood" placeholder="Bairro">
-        <input id="reference" placeholder="Ponto de referência">
-        <textarea class="full" id="generalNotes" placeholder="Observações gerais"></textarea>
-      </div>
+async function loadData(){
+  const [pRes,sRes]=await Promise.all([
+    db.from('produtos').select('*').eq('ativo',true).order('id'),
+    db.from('configuracoes').select('*').order('id').limit(1)
+  ]);
+  products=pRes.data||[];
+  if(sRes.data?.length)settings=sRes.data[0];
+  renderHeader();renderCategories();renderProducts();renderAccount();restoreCustomer();
+}
+async function renderAccount(){
+  const {data:{session}}=await db.auth.getSession();
+  if(!session){accountLink.textContent='Entrar (opcional)';return}
+  const {data:profile}=await db.from('perfis').select('nome,role').eq('id',session.user.id).single();
+  accountLink.textContent=profile?.nome?`Olá, ${profile.nome.split(' ')[0]}`:'Minha conta';
+  accountLink.href=profile?.role==='dono'?'admin.html':'conta.html';
+}
+function renderHeader(){
+  storeName.textContent=settings.nome_loja||'PedidoFlow Lanches';
+  storeAddress.textContent=settings.endereco||'';
+  storeStatus.textContent=settings.loja_aberta?'Loja aberta':'Loja fechada';
+}
+function renderCategories(){
+  const cats=['Todos',...new Set(products.map(p=>p.categoria||'Outros'))];
+  categories.innerHTML=cats.map(c=>`<button class="chip ${c===activeCategory?'active':''}" onclick="setCategory('${c.replaceAll("'","\'")}')">${c}</button>`).join('');
+}
+function setCategory(c){activeCategory=c;renderCategories();renderProducts()}
+function renderProducts(){
+  const q=search.value.toLowerCase().trim();
+  const filtered=products.filter(p=>(activeCategory==='Todos'||p.categoria===activeCategory)&&((p.nome||'').toLowerCase().includes(q)||(p.descricao||'').toLowerCase().includes(q)));
+  productCount.textContent=`${filtered.length} produto${filtered.length===1?'':'s'}`;
+  document.getElementById('products').innerHTML=filtered.length?filtered.map((p,i)=>`
+  <article class="product-card">
+    ${i<2?'<span class="badge">Mais pedido</span>':''}
+    <img src="${p.imagem_url||'https://via.placeholder.com/800x500?text=Produto'}" onerror="this.src='https://via.placeholder.com/800x500?text=Produto'">
+    <div class="product-body"><div class="category-label">${p.categoria||'Outros'}</div><h3>${p.nome}</h3>
+    <div class="description">${p.descricao||''}</div>
+    <div class="price-row"><div class="price">${money(p.preco)}</div><button class="btn btn-primary" onclick="addToCart(${p.id})">Adicionar</button></div></div>
+  </article>`).join(''):'<div class="empty">Nenhum produto encontrado.</div>';
+}
+function addToCart(id){const p=products.find(x=>x.id===id),f=cart.find(x=>x.id===id);if(f)f.qty++;else cart.push({...p,qty:1,note:''});updateCartCount()}
+function updateCartCount(){cartCount.textContent=cart.reduce((a,b)=>a+b.qty,0)}
+function openCart(){renderCart();cartDialog.showModal()}
+function renderCart(){
+  cartItems.innerHTML=cart.length?cart.map(i=>`
+  <div class="cart-item"><div><strong>${i.nome}</strong><div class="muted">${money(i.preco)} cada</div>
+  <input class="item-note" value="${i.note||''}" placeholder="Ex.: sem cebola" oninput="setNote(${i.id},this.value)"></div>
+  <div class="qty"><button onclick="changeQty(${i.id},-1)">−</button><strong>${i.qty}</strong><button onclick="changeQty(${i.id},1)">+</button></div></div>`).join(''):'<div class="empty">Seu carrinho está vazio.</div>';
+  const sub=cart.reduce((s,i)=>s+Number(i.preco)*i.qty,0),fee=deliveryType.value==='Entrega'?Number(settings.taxa_entrega||0):0;
+  subtotal.textContent=money(sub);deliveryFee.textContent=money(fee);total.textContent=money(sub+fee);
+}
+function changeQty(id,d){const i=cart.find(x=>x.id===id);if(!i)return;i.qty+=d;if(i.qty<=0)cart=cart.filter(x=>x.id!==id);updateCartCount();renderCart()}
+function setNote(id,n){const i=cart.find(x=>x.id===id);if(i)i.note=n}
 
-      <button class="finish" onclick="sendWhatsApp()">Enviar pedido pelo WhatsApp</button>
-    </div>
-  </dialog>
+function maskPhone(value){
+  let d=digits(value).slice(0,11);
+  if(d.length<=2)return d;
+  if(d.length<=6)return `(${d.slice(0,2)}) ${d.slice(2)}`;
+  if(d.length<=10)return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+}
+customerPhone.addEventListener('input',e=>{e.target.value=maskPhone(e.target.value)});
+addressNumber.addEventListener('input',e=>{e.target.value=digits(e.target.value)});
+changeFor.addEventListener('input',e=>{e.target.value=e.target.value.replace(/[^0-9,\.]/g,'')});
 
-  <script>
-    const db = supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
-    let products = [];
-    let settings = {nome_loja:'PedidoFlow Lanches',whatsapp:'5573999999999',taxa_entrega:5,endereco:'Jequié - BA',chave_pix:'',loja_aberta:true};
-    let cart = [];
-    let activeCategory = 'Todos';
+deliveryType.addEventListener('change',()=>{
+  deliveryFields.classList.toggle('hidden',deliveryType.value==='Retirada');
+  renderCart();clearErrors();
+});
+payment.addEventListener('change',()=>{changeField.classList.toggle('hidden',payment.value!=='Dinheiro');clearErrors()});
 
-    const money = v => Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-
-    async function renderAccountLink(){
-      const { data: { session } } = await db.auth.getSession();
-      if(!session) {
-        accountLink.textContent='Entrar';
-        accountLink.href='login.html';
-        return;
-      }
-      const { data: profile } = await db.from('perfis').select('role,nome').eq('id',session.user.id).single();
-      accountLink.textContent = profile?.nome ? `Olá, ${profile.nome.split(' ')[0]}` : 'Minha conta';
-      accountLink.href = profile?.role === 'dono' ? 'admin.html' : 'conta.html';
-    }
-
-    async function loadData(){
-      const [pRes,sRes] = await Promise.all([
-        db.from('produtos').select('*').eq('ativo',true).order('id'),
-        db.from('configuracoes').select('*').order('id').limit(1)
-      ]);
-      if(pRes.error) console.error(pRes.error);
-      products = pRes.data || [];
-      if(sRes.data && sRes.data.length) settings = sRes.data[0];
-      renderHeader(); renderCategories(); renderProducts();
-    }
-
-    function renderHeader(){
-      storeName.textContent = settings.nome_loja || 'PedidoFlow Lanches';
-      storeAddress.textContent = settings.endereco || '';
-      storeStatus.textContent = settings.loja_aberta ? 'Loja aberta' : 'Loja fechada';
-      statusDot.style.background = settings.loja_aberta ? '#16a34a' : '#dc2626';
-    }
-
-    function renderCategories(){
-      const cats = ['Todos', ...new Set(products.map(p=>p.categoria || 'Outros'))];
-      categories.innerHTML = cats.map(c=>`<button class="chip ${c===activeCategory?'active':''}" onclick="setCategory('${c.replaceAll("'","\'")}')">${c}</button>`).join('');
-    }
-
-    function setCategory(cat){
-      activeCategory = cat;
-      renderCategories();
-      renderProducts();
-    }
-
-    function renderProducts(){
-      const q = search.value.toLowerCase().trim();
-      const filtered = products.filter(p => {
-        const matchCategory = activeCategory==='Todos' || p.categoria===activeCategory;
-        const matchSearch = (p.nome||'').toLowerCase().includes(q) || (p.descricao||'').toLowerCase().includes(q);
-        return matchCategory && matchSearch;
-      });
-      productCount.textContent = `${filtered.length} produto${filtered.length===1?'':'s'}`;
-      productsEl = document.getElementById('products');
-      productsEl.innerHTML = filtered.length ? filtered.map((p,i)=>`
-        <article class="card">
-          ${i<2?'<span class="badge">Mais pedido</span>':''}
-          <img class="card-img" src="${p.imagem_url || 'https://via.placeholder.com/800x500?text=Produto'}" alt="${p.nome}" onerror="this.src='https://via.placeholder.com/800x500?text=Produto'">
-          <div class="card-body">
-            <div class="category-label">${p.categoria || 'Outros'}</div>
-            <h3>${p.nome}</h3>
-            <div class="description">${p.descricao || ''}</div>
-            <div class="price-row"><div class="price">${money(p.preco)}</div><button class="add-btn" onclick="addToCart(${p.id})">Adicionar</button></div>
-          </div>
-        </article>`).join('') : '<div class="empty full">Nenhum produto encontrado.</div>';
-    }
-
-    function addToCart(id){
-      const p = products.find(x=>x.id===id);
-      const found = cart.find(x=>x.id===id);
-      if(found) found.qty++;
-      else cart.push({...p,qty:1,note:''});
-      updateCartCount();
-    }
-
-    function updateCartCount(){ cartCount.textContent = cart.reduce((a,b)=>a+b.qty,0); }
-
-    function openCart(){ renderCart(); cartDialog.showModal(); }
-
-    function renderCart(){
-      cartItems.innerHTML = cart.length ? cart.map(i=>`
-        <div class="cart-item">
-          <div>
-            <strong>${i.nome}</strong>
-            <div style="color:#6b7280;margin-top:4px">${money(i.preco)} cada</div>
-            <input class="item-note" placeholder="Ex.: sem cebola" value="${i.note||''}" oninput="setNote(${i.id},this.value)">
-          </div>
-          <div class="qty"><button onclick="changeQty(${i.id},-1)">−</button><strong>${i.qty}</strong><button onclick="changeQty(${i.id},1)">+</button></div>
-        </div>`).join('') : '<div class="empty">Seu carrinho está vazio.</div>';
-      const sub = cart.reduce((s,i)=>s+Number(i.preco)*i.qty,0);
-      const fee = deliveryType.value==='Entrega' ? Number(settings.taxa_entrega||0) : 0;
-      subtotal.textContent = money(sub); deliveryFee.textContent = money(fee); total.textContent = money(sub+fee);
-    }
-
-    function changeQty(id,d){
-      const item = cart.find(x=>x.id===id);
-      if(!item) return;
-      item.qty += d;
-      if(item.qty<=0) cart = cart.filter(x=>x.id!==id);
-      updateCartCount(); renderCart();
-    }
-
-    function setNote(id,note){ const item=cart.find(x=>x.id===id); if(item) item.note=note; }
-
-    deliveryType.addEventListener('change',()=>{
-      const disabled = deliveryType.value==='Retirada';
-      address.disabled=disabled; neighborhood.disabled=disabled; reference.disabled=disabled;
-      renderCart();
-    });
-
-    function sendWhatsApp(){
-      if(!cart.length) return alert('Adicione pelo menos um produto.');
-      if(!customerName.value.trim()) return alert('Informe seu nome.');
-      if(deliveryType.value==='Entrega' && !address.value.trim()) return alert('Informe o endereço.');
-      if(!settings.loja_aberta) return alert('A loja está fechada no momento.');
-
-      const sub = cart.reduce((s,i)=>s+Number(i.preco)*i.qty,0);
-      const fee = deliveryType.value==='Entrega' ? Number(settings.taxa_entrega||0) : 0;
-      const order = Math.floor(1000+Math.random()*9000);
-
-      let text = `*NOVO PEDIDO #${order}*\n\n*Cliente:* ${customerName.value}\n*Telefone:* ${customerPhone.value}\n*Tipo:* ${deliveryType.value}\n`;
-      if(deliveryType.value==='Entrega') text += `*Endereço:* ${address.value}\n*Bairro:* ${neighborhood.value}\n*Referência:* ${reference.value}\n`;
-      text += `*Pagamento:* ${payment.value}\n\n*ITENS:*\n`;
-      cart.forEach(i=>{
-        text += `${i.qty}x ${i.nome} - ${money(Number(i.preco)*i.qty)}`;
-        if(i.note) text += ` (${i.note})`;
-        text += '\n';
-      });
-      text += `\n*Subtotal:* ${money(sub)}\n*Entrega:* ${money(fee)}\n*TOTAL:* ${money(sub+fee)}`;
-      if(generalNotes.value) text += `\n\n*Observações:* ${generalNotes.value}`;
-      if(payment.value==='Pix' && settings.chave_pix) text += `\n*Chave Pix:* ${settings.chave_pix}`;
-
-      const phone = (settings.whatsapp||'').replace(/\D/g,'');
-      if(phone.length<12) return alert('WhatsApp da loja inválido.');
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`,'_blank');
-    }
-
-    search.addEventListener('input',renderProducts);
-    renderAccountLink();
-    loadData();
-  </script>
-<footer style="padding:30px 18px;text-align:center;color:#9ca3af;font-size:12px"><a href="dono.html" style="color:#9ca3af;text-decoration:none">Acesso administrativo</a></footer>
-</body>
-</html>
+function clearErrors(){
+  document.querySelectorAll('.invalid').forEach(el=>el.classList.remove('invalid'));
+  document.querySelectorAll('.error-text').forEach(el=>el.textContent='');
+}
+function setError(input,errorEl,message){input.classList.add('invalid');errorEl.textContent=message}
+function validateCheckout(){
+  clearErrors();let valid=true;
+  const nome=customerName.value.trim(),phone=digits(customerPhone.value);
+  if(nome.length<3||!/^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s.'-]+$/.test(nome)){setError(customerName,nameError,'Informe um nome válido.');valid=false}
+  if(phone.length<10||phone.length>11){setError(customerPhone,phoneError,'Informe um WhatsApp válido com DDD.');valid=false}
+  if(deliveryType.value==='Entrega'){
+    if(address.value.trim().length<4){setError(address,addressError,'Informe a rua ou avenida.');valid=false}
+    if(!/^\d+$/.test(addressNumber.value.trim())){setError(addressNumber,numberError,'Informe apenas números.');valid=false}
+    if(neighborhood.value.trim().length<2){setError(neighborhood,neighborhoodError,'Informe o bairro.');valid=false}
+  }
+  if(payment.value==='Dinheiro'&&changeFor.value.trim()){
+    const c=Number(changeFor.value.replace(',','.')),totalValue=cart.reduce((s,i)=>s+Number(i.preco)*i.qty,0)+(deliveryType.value==='Entrega'?Number(settings.taxa_entrega||0):0);
+    if(!c||c<totalValue){setError(changeFor,changeError,'O valor do troco deve ser maior ou igual ao total.');valid=false}
+  }
+  return valid;
+}
+function saveCustomer(){
+  localStorage.setItem('pf_customer',JSON.stringify({name:customerName.value.trim(),phone:customerPhone.value,address:address.value.trim(),number:addressNumber.value.trim(),neighborhood:neighborhood.value.trim(),reference:reference.value.trim()}))
+}
+function restoreCustomer(){
+  try{const d=JSON.parse(localStorage.getItem('pf_customer')||'null');if(!d)return;customerName.value=d.name||'';customerPhone.value=d.phone||'';address.value=d.address||'';addressNumber.value=d.number||'';neighborhood.value=d.neighborhood||'';reference.value=d.reference||''}catch{}
+}
+async function saveOrder(orderNumber,sub,fee){
+  const {data:{user}}=await db.auth.getUser();
+  const payload={numero:orderNumber,cliente_id:user?.id||null,cliente_nome:customerName.value.trim(),cliente_telefone:digits(customerPhone.value),
+    tipo_entrega:deliveryType.value,endereco:deliveryType.value==='Entrega'?`${address.value.trim()}, ${addressNumber.value.trim()}`:'',
+    bairro:deliveryType.value==='Entrega'?neighborhood.value.trim():'',referencia:deliveryType.value==='Entrega'?reference.value.trim():'',
+    pagamento:payment.value,observacoes:[generalNotes.value.trim(),payment.value==='Dinheiro'&&changeFor.value.trim()?`Troco para R$ ${changeFor.value}`:''].filter(Boolean).join(' | '),
+    subtotal:sub,taxa_entrega:fee,total:sub+fee,status:'Recebido',
+    itens:cart.map(i=>({produto_id:i.id,nome:i.nome,quantidade:i.qty,preco_unitario:Number(i.preco),observacao:i.note||''}))};
+  const {error}=await db.from('pedidos').insert(payload);if(error)throw error;
+}
+async function sendOrder(){
+  if(!cart.length)return alert('Adicione pelo menos um produto.');
+  if(!settings.loja_aberta)return alert('A loja está fechada no momento.');
+  if(!validateCheckout())return;
+  saveCustomer();
+  const sub=cart.reduce((s,i)=>s+Number(i.preco)*i.qty,0),fee=deliveryType.value==='Entrega'?Number(settings.taxa_entrega||0):0,order=Math.floor(1000+Math.random()*9000);
+  try{await saveOrder(order,sub,fee)}catch(e){console.error(e);if(!confirm('Não foi possível salvar no painel. Enviar mesmo assim pelo WhatsApp?'))return}
+  let text=`*NOVO PEDIDO #${order}*\n\n*Cliente:* ${customerName.value.trim()}\n*Telefone:* ${customerPhone.value}\n*Tipo:* ${deliveryType.value}\n`;
+  if(deliveryType.value==='Entrega')text+=`*Endereço:* ${address.value.trim()}, ${addressNumber.value.trim()}\n*Bairro:* ${neighborhood.value.trim()}\n*Referência:* ${reference.value.trim()||'Não informada'}\n`;
+  text+=`*Pagamento:* ${payment.value}`;
+  if(payment.value==='Dinheiro'&&changeFor.value.trim())text+=`\n*Troco para:* R$ ${changeFor.value}`;
+  text+='\n\n*ITENS:*\n';
+  cart.forEach(i=>{text+=`${i.qty}x ${i.nome} - ${money(Number(i.preco)*i.qty)}${i.note?` (${i.note})`:''}\n`});
+  text+=`\n*Subtotal:* ${money(sub)}\n*Entrega:* ${money(fee)}\n*TOTAL:* ${money(sub+fee)}`;
+  if(generalNotes.value.trim())text+=`\n\n*Observações:* ${generalNotes.value.trim()}`;
+  if(payment.value==='Pix'&&settings.chave_pix)text+=`\n*Chave Pix:* ${settings.chave_pix}`;
+  let phone=digits(settings.whatsapp);if(!phone.startsWith('55'))phone='55'+phone;
+  if(phone.length<12)return alert('WhatsApp da loja inválido. Configure no painel do dono.');
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`,'_blank');
+}
+search.addEventListener('input',renderProducts);loadData();
+</script>
+</body></html>
