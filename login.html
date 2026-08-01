@@ -2,81 +2,48 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Entrar | PedidoFlow</title>
+<title>Cliente | PedidoFlow</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:linear-gradient(135deg,#111827,#374151);min-height:100vh;display:grid;place-items:center;padding:18px}
 .card{width:min(440px,100%);background:#fff;border-radius:24px;padding:26px;box-shadow:0 30px 80px rgba(0,0,0,.3)}
 .logo{width:58px;height:58px;border-radius:18px;background:#ef5b24;color:#fff;display:grid;place-items:center;font-size:29px;margin-bottom:14px}
-h1{margin:0 0 6px}p{color:#6b7280;line-height:1.5}.tabs{display:grid;grid-template-columns:1fr 1fr;background:#f3f4f6;border-radius:14px;padding:4px;margin:20px 0}
-.tabs button{border:0;background:transparent;padding:11px;border-radius:11px;font-weight:800;cursor:pointer}.tabs button.active{background:#111827;color:#fff}
+h1{margin:0 0 6px}p{color:#6b7280;line-height:1.5}
 input{width:100%;padding:13px;border:1px solid #e5e7eb;border-radius:12px;margin-bottom:10px;font:inherit}
-.primary{width:100%;border:0;border-radius:13px;padding:13px;background:#ef5b24;color:white;font-weight:800;cursor:pointer}
-.secondary{width:100%;border:0;border-radius:13px;padding:13px;background:#f3f4f6;font-weight:800;cursor:pointer;margin-top:9px}
-.hidden{display:none}.message{min-height:24px;margin-top:12px;font-size:14px}a{color:#ef5b24;text-decoration:none;font-weight:700}
+button{width:100%;border:0;border-radius:13px;padding:13px;font-weight:800;cursor:pointer}
+.primary{background:#ef5b24;color:white}.secondary{background:#f3f4f6;margin-top:9px}
+.message{min-height:24px;margin-top:12px;font-size:14px}a{color:#ef5b24;text-decoration:none;font-weight:700}
+.sep{display:flex;align-items:center;gap:10px;color:#9ca3af;margin:16px 0;font-size:13px}.sep:before,.sep:after{content:"";height:1px;background:#e5e7eb;flex:1}
 </style>
 </head>
 <body>
 <div class="card">
   <div class="logo">🍔</div>
-  <h1>Acessar PedidoFlow</h1>
-  <p id="subtitle">Entre para acompanhar seus dados e fazer pedidos com mais facilidade.</p>
+  <h1>Área do cliente</h1>
+  <p>Entre para acessar sua conta ou crie um cadastro.</p>
 
-  <div class="tabs">
-    <button id="clientTab" class="active" onclick="setMode('cliente')">Cliente</button>
-    <button id="ownerTab" onclick="setMode('dono')">Dono da loja</button>
-  </div>
-
-  <input id="name" placeholder="Seu nome">
-  <input id="email" type="email" placeholder="E-mail">
-  <input id="password" type="password" placeholder="Senha (mínimo 6 caracteres)">
+  <input id="nameInput" placeholder="Seu nome">
+  <input id="emailInput" type="email" placeholder="E-mail">
+  <input id="passwordInput" type="password" placeholder="Senha (mínimo 6 caracteres)">
 
   <button class="primary" onclick="signIn()">Entrar</button>
-  <button id="signupButton" class="secondary" onclick="signUp()">Criar conta de cliente</button>
-  <div id="message" class="message"></div>
+  <div class="sep">ou</div>
+  <button class="secondary" onclick="signUp()">Criar conta de cliente</button>
+
+  <div id="messageElement" class="message"></div>
   <p style="text-align:center;margin-bottom:0"><a href="index.html">Voltar ao cardápio</a></p>
 </div>
 
 <script>
 const db = supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
-let mode = 'cliente';
-
-function setMode(next) {
-  mode = next;
-  clientTab.classList.toggle('active', mode === 'cliente');
-  ownerTab.classList.toggle('active', mode === 'dono');
-  name.classList.toggle('hidden', mode === 'dono');
-  signupButton.classList.toggle('hidden', mode === 'dono');
-  subtitle.textContent = mode === 'dono'
-    ? 'Acesso exclusivo ao painel administrativo da loja.'
-    : 'Entre ou crie sua conta para facilitar seus pedidos.';
-  message.textContent = '';
-}
+const nameInput = document.getElementById('nameInput');
+const emailInput = document.getElementById('emailInput');
+const passwordInput = document.getElementById('passwordInput');
+const messageElement = document.getElementById('messageElement');
 
 function show(text, ok=false) {
-  message.textContent = text;
-  message.style.color = ok ? '#15803d' : '#b91c1c';
-}
-
-async function signUp() {
-  const customerName = name.value.trim();
-  if (!customerName) return show('Informe seu nome.');
-  if (!email.value.trim()) return show('Informe seu e-mail.');
-  if (password.value.length < 6) return show('A senha precisa ter pelo menos 6 caracteres.');
-
-  const { data, error } = await db.auth.signUp({
-    email: email.value.trim(),
-    password: password.value,
-    options: { data: { nome: customerName } }
-  });
-  if (error) return show(error.message);
-
-  if (data.session) {
-    await ensureClientProfile(data.user, customerName);
-    location.href = 'conta.html';
-  } else {
-    show('Conta criada. Confira seu e-mail para confirmar o cadastro.', true);
-  }
+  messageElement.textContent = text;
+  messageElement.style.color = ok ? '#15803d' : '#b91c1c';
 }
 
 async function ensureClientProfile(user, customerName) {
@@ -88,43 +55,66 @@ async function ensureClientProfile(user, customerName) {
   }, { onConflict: 'id' });
 }
 
-async function signIn() {
-  const { data, error } = await db.auth.signInWithPassword({
-    email: email.value.trim(),
-    password: password.value
+async function signUp() {
+  const customerName = nameInput.value.trim();
+  const customerEmail = emailInput.value.trim();
+  const customerPassword = passwordInput.value;
+
+  if (!customerName) return show('Informe seu nome.');
+  if (!customerEmail) return show('Informe seu e-mail.');
+  if (customerPassword.length < 6) return show('A senha precisa ter pelo menos 6 caracteres.');
+
+  show('Criando conta...', true);
+
+  const { data, error } = await db.auth.signUp({
+    email: customerEmail,
+    password: customerPassword,
+    options: { data: { nome: customerName } }
   });
+
+  if (error) return show(error.message);
+
+  if (data.session) {
+    await ensureClientProfile(data.user, customerName);
+    location.href = 'conta.html';
+  } else {
+    show('Conta criada. Confira seu e-mail para confirmar o cadastro.', true);
+  }
+}
+
+async function signIn() {
+  const customerEmail = emailInput.value.trim();
+  const customerPassword = passwordInput.value;
+
+  if (!customerEmail) return show('Informe seu e-mail.');
+  if (!customerPassword) return show('Informe sua senha.');
+
+  show('Entrando...', true);
+
+  const { data, error } = await db.auth.signInWithPassword({
+    email: customerEmail,
+    password: customerPassword
+  });
+
   if (error) return show('E-mail ou senha inválidos.');
 
-  const { data: profile, error: profileError } = await db
-    .from('perfis').select('role,nome').eq('id', data.user.id).single();
+  const { data: profile } = await db.from('perfis').select('role,nome').eq('id', data.user.id).single();
 
-  if (profileError || !profile) {
-    if (mode === 'cliente') {
-      await ensureClientProfile(data.user, data.user.user_metadata?.nome || '');
-      return location.href = 'conta.html';
-    }
+  if (profile?.role === 'dono') {
     await db.auth.signOut();
-    return show('Esta conta ainda não foi autorizada como dona da loja.');
+    return show('Esta conta pertence ao dono da loja. Use o acesso administrativo.');
   }
 
-  if (mode === 'dono') {
-    if (profile.role !== 'dono') {
-      await db.auth.signOut();
-      return show('Esta conta não possui acesso de dono.');
-    }
-    location.href = 'admin.html';
-  } else {
-    location.href = profile.role === 'dono' ? 'admin.html' : 'conta.html';
-  }
+  if (!profile) await ensureClientProfile(data.user, data.user.user_metadata?.nome || '');
+  location.href = 'conta.html';
 }
 
 (async () => {
   const { data } = await db.auth.getSession();
-  if (data.session) {
-    const { data: profile } = await db.from('perfis').select('role').eq('id', data.session.user.id).single();
-    if (profile?.role === 'dono') location.href = 'admin.html';
-    else if (profile?.role === 'cliente') location.href = 'conta.html';
-  }
+  if (!data.session) return;
+  const { data: profile } = await db.from('perfis').select('role').eq('id', data.session.user.id).single();
+  if (profile?.role === 'cliente') location.href = 'conta.html';
+  if (profile?.role === 'dono') await db.auth.signOut();
 })();
 </script>
 </body>

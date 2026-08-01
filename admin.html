@@ -97,11 +97,11 @@ let editingId = null;
 
 async function requireOwner(){
   const { data: { user } } = await db.auth.getUser();
-  if(!user) { location.href='login.html'; return false; }
+  if(!user) { location.href='dono.html'; return false; }
   const { data: profile, error } = await db.from('perfis').select('role').eq('id',user.id).single();
   if(error || profile?.role !== 'dono') {
     await db.auth.signOut();
-    location.href='login.html';
+    location.href='dono.html';
     return false;
   }
   return true;
@@ -109,7 +109,7 @@ async function requireOwner(){
 
 async function logout(){
   await db.auth.signOut();
-  location.href='login.html';
+  location.href='dono.html';
 }
 
 async function init(){
