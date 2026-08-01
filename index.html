@@ -89,7 +89,7 @@
   <div class="topbar">
     <div class="container topbar-inner">
       <div class="status"><span class="dot" id="statusDot"></span><span id="storeStatus">Loja aberta</span></div>
-      <div id="storeAddress">Jequié - BA</div>
+      <div><span id="storeAddress">Jequié - BA</span> · <a id="accountLink" href="login.html" style="color:#fff;font-weight:800;text-decoration:none">Entrar</a></div>
     </div>
   </div>
 
@@ -162,6 +162,18 @@
     let activeCategory = 'Todos';
 
     const money = v => Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+    async function renderAccountLink(){
+      const { data: { session } } = await db.auth.getSession();
+      if(!session) {
+        accountLink.textContent='Entrar';
+        accountLink.href='login.html';
+        return;
+      }
+      const { data: profile } = await db.from('perfis').select('role,nome').eq('id',session.user.id).single();
+      accountLink.textContent = profile?.nome ? `Olá, ${profile.nome.split(' ')[0]}` : 'Minha conta';
+      accountLink.href = profile?.role === 'dono' ? 'admin.html' : 'conta.html';
+    }
 
     async function loadData(){
       const [pRes,sRes] = await Promise.all([
@@ -285,6 +297,7 @@
     }
 
     search.addEventListener('input',renderProducts);
+    renderAccountLink();
     loadData();
   </script>
 </body>

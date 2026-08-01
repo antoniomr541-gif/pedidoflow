@@ -36,7 +36,7 @@
   </aside>
 
   <main>
-    <div class="top"><div><div class="muted">Painel administrativo</div><h2>Gerenciar loja</h2></div><a href="index.html"><button class="dark">Ver cardápio</button></a></div>
+    <div class="top"><div><div class="muted">Painel administrativo</div><h2>Gerenciar loja</h2></div><div class="actions"><a href="index.html"><button class="dark">Ver cardápio</button></a><button onclick="logout()">Sair</button></div></div>
 
     <section class="card" id="config">
       <h3>Configurações da loja</h3>
@@ -95,7 +95,25 @@ let products = [];
 let settingsId = null;
 let editingId = null;
 
+async function requireOwner(){
+  const { data: { user } } = await db.auth.getUser();
+  if(!user) { location.href='login.html'; return false; }
+  const { data: profile, error } = await db.from('perfis').select('role').eq('id',user.id).single();
+  if(error || profile?.role !== 'dono') {
+    await db.auth.signOut();
+    location.href='login.html';
+    return false;
+  }
+  return true;
+}
+
+async function logout(){
+  await db.auth.signOut();
+  location.href='login.html';
+}
+
 async function init(){
+  if(!await requireOwner()) return;
   await Promise.all([reloadSettings(),reloadProducts()]);
 }
 
