@@ -70,77 +70,83 @@
   </div>
 </dialog>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const defaultProducts = [
- {id:1,name:'X-Burguer',price:18,category:'Hambúrgueres',description:'Pão, carne, queijo e salada',image:'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80',active:true},
- {id:2,name:'Pizza Calabresa',price:42,category:'Pizzas',description:'Molho, queijo, calabresa e cebola',image:'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=900&q=80',active:true},
- {id:3,name:'Coxinha',price:7,category:'Salgados',description:'Coxinha de frango cremosa',image:'https://images.unsplash.com/photo-1625944525533-473f1a3d54e7?auto=format&fit=crop&w=900&q=80',active:true},
- {id:4,name:'Refrigerante Lata',price:6,category:'Bebidas',description:'350 ml',image:'https://images.unsplash.com/photo-1629203849820-fdd70d49c38e?auto=format&fit=crop&w=900&q=80',active:true}
-];
-const defaultSettings = {storeName:'PedidoFlow Lanches',whatsapp:'5573999999999',deliveryFee:5,open:true,address:'Jequié - BA',pixKey:''};
+const SUPABASE_URL = 'https://ggdmqffnkpumjwmrqqzi.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let products = JSON.parse(localStorage.getItem('pf_products') || 'null') || defaultProducts;
-let settings = JSON.parse(localStorage.getItem('pf_settings') || 'null') || defaultSettings;
+let products = [];
+let settings = {storeName:'PedidoFlow Lanches', whatsapp:'', deliveryFee:0, open:true, address:'', pixKey:''};
 let cart = [];
+const money = v => Number(v || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 
-const money = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-function saveDefaults(){localStorage.setItem('pf_products',JSON.stringify(products));localStorage.setItem('pf_settings',JSON.stringify(settings))}
-saveDefaults();
-
-function renderHeader(){
+async function loadData() {
+  const [pRes, sRes] = await Promise.all([
+    db.from('produtos').select('*').order('id'),
+    db.from('configuracoes').select('*').order('id').limit(1).maybeSingle()
+  ]);
+  if (pRes.error) return showError('Não foi possível carregar os produtos: ' + pRes.error.message);
+  products = (pRes.data || []).map(p => ({
+    id:p.id, name:p.nome, price:Number(p.preco), category:p.categoria || 'Outros',
+    description:p.descricao || '', image:p.imagem_url || 'https://via.placeholder.com/600x400?text=Produto', active:p.ativo !== false
+  }));
+  if (sRes.data) settings = {
+    storeName:sRes.data.nome_loja, whatsapp:sRes.data.whatsapp,
+    deliveryFee:Number(sRes.data.taxa_entrega || 0), open:sRes.data.loja_aberta !== false,
+    address:sRes.data.endereco || '', pixKey:sRes.data.chave_pix || ''
+  };
+  renderHeader(); renderCategories(); renderProducts();
+}
+function showError(message) { document.getElementById('products').innerHTML = `<div class="card"><div class="p"><strong>Erro</strong><p>${message}</p></div></div>`; }
+function renderHeader() {
  document.getElementById('storeName').textContent=settings.storeName;
  document.getElementById('storeInfo').textContent=settings.address || '';
  const st=document.getElementById('storeStatus'); st.textContent=settings.open?'Aberto':'Fechado'; st.style.background=settings.open?'#1f9d55':'#b91c1c';
 }
-function renderCategories(){
+function renderCategories() {
  const cats=[...new Set(products.filter(p=>p.active).map(p=>p.category))];
  category.innerHTML='<option value="">Todas as categorias</option>'+cats.map(c=>`<option>${c}</option>`).join('');
 }
-function renderProducts(){
- const q=search.value.toLowerCase(); const c=category.value;
+function renderProducts() {
+ const q=search.value.toLowerCase(), c=category.value;
  const list=products.filter(p=>p.active && (!c||p.category===c) && (p.name.toLowerCase().includes(q)||p.description.toLowerCase().includes(q)));
- productsEl=document.getElementById('products');
- productsEl.innerHTML=list.map(p=>`
+ document.getElementById('products').innerHTML=list.length?list.map(p=>`
  <article class="card"><img src="${p.image}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/600x400?text=Produto'">
  <div class="p"><div class="muted">${p.category}</div><h3>${p.name}</h3><p>${p.description}</p>
  <div class="row"><strong>${money(p.price)}</strong></div>
- <button class="add" onclick="addToCart(${p.id})">Adicionar</button></div></article>`).join('');
+ <button class="add" onclick="addToCart(${p.id})">Adicionar</button></div></article>`).join(''):'<p>Nenhum produto disponível.</p>';
 }
-function addToCart(id){
- const p=products.find(x=>x.id===id); const found=cart.find(x=>x.id===id);
- if(found) found.qty++; else cart.push({...p,qty:1});
- updateCartCount();
-}
-function updateCartCount(){cartCount.textContent=cart.reduce((a,b)=>a+b.qty,0)}
-function openCart(){renderCart();cartDialog.showModal()}
-function renderCart(){
- cartItems.innerHTML=cart.length?cart.map(i=>`<div class="cart-item row"><div><strong>${i.name}</strong><div class="muted">${money(i.price)} x ${i.qty}</div></div>
- <div><button onclick="changeQty(${i.id},-1)">−</button> <button onclick="changeQty(${i.id},1)">+</button></div></div>`).join(''):'<p>Seu carrinho está vazio.</p>';
- const sub=cart.reduce((s,i)=>s+i.price*i.qty,0);
- const fee=deliveryType.value==='Entrega'?Number(settings.deliveryFee||0):0;
+function addToCart(id) { const p=products.find(x=>x.id===id); const found=cart.find(x=>x.id===id); if(found) found.qty++; else cart.push({...p,qty:1}); updateCartCount(); }
+function updateCartCount() {cartCount.textContent=cart.reduce((a,b)=>a+b.qty,0)}
+function openCart() {renderCart();cartDialog.showModal()}
+function renderCart() {
+ cartItems.innerHTML=cart.length?cart.map(i=>`<div class="cart-item row"><div><strong>${i.name}</strong><div class="muted">${money(i.price)} x ${i.qty}</div></div><div><button onclick="changeQty(${i.id},-1)">−</button> <button onclick="changeQty(${i.id},1)">+</button></div></div>`).join(''):'<p>Seu carrinho está vazio.</p>';
+ const sub=cart.reduce((s,i)=>s+i.price*i.qty,0), fee=deliveryType.value==='Entrega'?Number(settings.deliveryFee||0):0;
  subtotal.textContent=money(sub); deliveryFee.textContent=money(fee); total.textContent=money(sub+fee);
 }
-function changeQty(id,d){const i=cart.find(x=>x.id===id);if(!i)return;i.qty+=d;if(i.qty<=0)cart=cart.filter(x=>x.id!==id);updateCartCount();renderCart()}
+function changeQty(id,d) {const i=cart.find(x=>x.id===id);if(!i)return;i.qty+=d;if(i.qty<=0)cart=cart.filter(x=>x.id!==id);updateCartCount();renderCart()}
 deliveryType.addEventListener('change',()=>{address.disabled=deliveryType.value==='Retirada';neighborhood.disabled=deliveryType.value==='Retirada';reference.disabled=deliveryType.value==='Retirada';renderCart()})
-function sendWhatsApp(){
+function sendWhatsApp() {
+ if(!settings.open) return alert('A loja está fechada no momento.');
  if(!cart.length) return alert('Adicione pelo menos um item.');
  if(!customerName.value.trim()) return alert('Informe seu nome.');
  if(deliveryType.value==='Entrega' && !address.value.trim()) return alert('Informe o endereço.');
  const sub=cart.reduce((s,i)=>s+i.price*i.qty,0), fee=deliveryType.value==='Entrega'?Number(settings.deliveryFee||0):0;
  const order=Math.floor(1000+Math.random()*9000);
- let msg=`*NOVO PEDIDO #${order}*%0A%0A*Cliente:* ${customerName.value}%0A*Telefone:* ${customerPhone.value}%0A*Tipo:* ${deliveryType.value}%0A`;
- if(deliveryType.value==='Entrega') msg+=`*Endereço:* ${address.value}%0A*Bairro:* ${neighborhood.value}%0A*Referência:* ${reference.value}%0A`;
- msg+=`*Pagamento:* ${payment.value}%0A%0A*ITENS:*%0A`;
- cart.forEach(i=>msg+=`${i.qty}x ${i.name} - ${money(i.price*i.qty)}%0A`);
- msg+=`%0A*Subtotal:* ${money(sub)}%0A*Entrega:* ${money(fee)}%0A*TOTAL:* ${money(sub+fee)}%0A`;
- if(notes.value) msg+=`%0A*Observações:* ${notes.value}`;
- if(payment.value==='Pix' && settings.pixKey) msg+=`%0A*Chave Pix:* ${settings.pixKey}`;
+ let lines=[`*NOVO PEDIDO #${order}*`,'',`*Cliente:* ${customerName.value}`,`*Telefone:* ${customerPhone.value}`,`*Tipo:* ${deliveryType.value}`];
+ if(deliveryType.value==='Entrega') lines.push(`*Endereço:* ${address.value}`,`*Bairro:* ${neighborhood.value}`,`*Referência:* ${reference.value}`);
+ lines.push(`*Pagamento:* ${payment.value}`,'','*ITENS:*');
+ cart.forEach(i=>lines.push(`${i.qty}x ${i.name} - ${money(i.price*i.qty)}`));
+ lines.push('',`*Subtotal:* ${money(sub)}`,`*Entrega:* ${money(fee)}`,`*TOTAL:* ${money(sub+fee)}`);
+ if(notes.value) lines.push('',`*Observações:* ${notes.value}`);
+ if(payment.value==='Pix' && settings.pixKey) lines.push(`*Chave Pix:* ${settings.pixKey}`);
  const phone=(settings.whatsapp||'').replace(/\D/g,'');
  if(phone.length<12) return alert('WhatsApp da loja inválido. Configure no painel.');
- window.open(`https://wa.me/${phone}?text=${msg}`,'_blank');
+ window.open(`https://wa.me/${phone}?text=${encodeURIComponent(lines.join('\n'))}`,'_blank');
 }
-search.addEventListener('input',renderProducts);category.addEventListener('change',renderProducts);
-renderHeader();renderCategories();renderProducts();
+search.addEventListener('input',renderProducts); category.addEventListener('change',renderProducts);
+loadData();
 </script>
 </body>
 </html>

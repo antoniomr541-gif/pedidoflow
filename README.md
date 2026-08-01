@@ -1,15 +1,9 @@
-# PedidoFlow Refeito
+# PedidoFlow com Supabase
 
-Arquivos:
-- index.html: cardápio do cliente
-- admin.html: painel local
+Esta versão usa o Supabase para sincronizar produtos e configurações entre aparelhos.
 
-Como testar:
-1. Abra admin.html.
-2. Configure o WhatsApp da loja no formato 5573999999999.
-3. Cadastre produtos.
-4. Abra index.html.
-5. Faça um pedido e envie pelo WhatsApp.
+## Publicação
+Substitua no GitHub os arquivos `index.html`, `admin.html` e `README.md`. A Vercel fará um novo deploy automaticamente.
 
-Observação:
-Os dados ficam salvos no navegador usando localStorage. Para uso comercial em vários aparelhos, a próxima etapa é conectar ao Supabase.
+## Atenção
+O painel ainda não possui login. As políticas atuais permitem alterações públicas para teste. A próxima etapa recomendada é adicionar autenticação e restringir escrita ao dono da loja.

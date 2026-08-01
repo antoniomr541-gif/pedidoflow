@@ -33,38 +33,44 @@ button{border:0;padding:10px 14px;border-radius:9px;cursor:pointer;font-weight:b
 
 <section class="card"><h2>Produtos</h2><div id="list"></div></section>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const defaults={storeName:'PedidoFlow Lanches',whatsapp:'5573999999999',deliveryFee:5,open:true,address:'Jequié - BA',pixKey:''};
-let settings=JSON.parse(localStorage.getItem('pf_settings')||'null')||defaults;
-let products=JSON.parse(localStorage.getItem('pf_products')||'[]');
+const SUPABASE_URL = 'https://ggdmqffnkpumjwmrqqzi.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let settingsRowId = null;
+let products = [];
 
-function load(){
- storeName.value=settings.storeName||'';whatsapp.value=settings.whatsapp||'';deliveryFee.value=settings.deliveryFee||0;
- storeAddress.value=settings.address||'';pixKey.value=settings.pixKey||'';open.value=String(settings.open);
- render();
+async function load() {
+  const [sRes,pRes] = await Promise.all([
+    db.from('configuracoes').select('*').order('id').limit(1).maybeSingle(),
+    db.from('produtos').select('*').order('id')
+  ]);
+  if (sRes.error) alert('Erro nas configurações: '+sRes.error.message);
+  if (pRes.error) alert('Erro nos produtos: '+pRes.error.message);
+  if (sRes.data) {
+    settingsRowId=sRes.data.id; storeName.value=sRes.data.nome_loja||''; whatsapp.value=sRes.data.whatsapp||'';
+    deliveryFee.value=sRes.data.taxa_entrega||0; storeAddress.value=sRes.data.endereco||'';
+    pixKey.value=sRes.data.chave_pix||''; open.value=String(sRes.data.loja_aberta!==false);
+  }
+  products=pRes.data||[]; render();
 }
-function saveSettings(){
- settings={storeName:storeName.value,whatsapp:whatsapp.value.replace(/\D/g,''),deliveryFee:Number(deliveryFee.value||0),
- address:storeAddress.value,pixKey:pixKey.value,open:open.value==='true'};
- localStorage.setItem('pf_settings',JSON.stringify(settings));alert('Configurações salvas.');
+async function saveSettings() {
+  const data={nome_loja:storeName.value||'PedidoFlow', whatsapp:whatsapp.value.replace(/\D/g,''), taxa_entrega:Number(deliveryFee.value||0), endereco:storeAddress.value, chave_pix:pixKey.value, loja_aberta:open.value==='true', atualizado_em:new Date().toISOString()};
+  const query=settingsRowId?db.from('configuracoes').update(data).eq('id',settingsRowId).select().single():db.from('configuracoes').insert(data).select().single();
+  const {data:row,error}=await query; if(error)return alert('Erro ao salvar: '+error.message); settingsRowId=row.id; alert('Configurações salvas na nuvem.');
 }
-function addProduct(){
- if(!name.value||!price.value) return alert('Informe nome e preço.');
- products.push({id:Date.now(),name:name.value,price:Number(price.value),category:category.value||'Outros',
- description:description.value||'',image:image.value||'https://via.placeholder.com/600x400?text=Produto',active:active.value==='true'});
- localStorage.setItem('pf_products',JSON.stringify(products));
- name.value=price.value=category.value=image.value=description.value='';render();
+async function addProduct() {
+  if(!name.value||!price.value)return alert('Informe nome e preço.');
+  const payload={nome:name.value,preco:Number(price.value),categoria:category.value||'Outros',descricao:description.value||'',imagem_url:image.value||'',ativo:active.value==='true'};
+  const {error}=await db.from('produtos').insert(payload); if(error)return alert('Erro ao cadastrar: '+error.message);
+  name.value=price.value=category.value=image.value=description.value=''; await reloadProducts();
 }
-function removeProduct(id){
- if(!confirm('Excluir este produto?'))return;
- products=products.filter(p=>p.id!==id);localStorage.setItem('pf_products',JSON.stringify(products));render();
-}
-function toggleProduct(id){
- const p=products.find(x=>x.id===id);p.active=!p.active;localStorage.setItem('pf_products',JSON.stringify(products));render();
-}
-function render(){
- list.innerHTML=products.length?products.map(p=>`<div class="item"><div><strong>${p.name}</strong><div class="muted">${p.category} • R$ ${p.price.toFixed(2)} • ${p.active?'Ativo':'Oculto'}</div></div>
- <div><button onclick="toggleProduct(${p.id})">${p.active?'Ocultar':'Ativar'}</button> <button class="danger" onclick="removeProduct(${p.id})">Excluir</button></div></div>`).join(''):'<p>Nenhum produto cadastrado.</p>';
+async function reloadProducts() { const {data,error}=await db.from('produtos').select('*').order('id'); if(error)return alert(error.message);products=data||[];render(); }
+async function removeProduct(id) { if(!confirm('Excluir este produto?'))return; const {error}=await db.from('produtos').delete().eq('id',id); if(error)return alert(error.message); await reloadProducts(); }
+async function toggleProduct(id) { const p=products.find(x=>x.id===id); const {error}=await db.from('produtos').update({ativo:!p.ativo}).eq('id',id); if(error)return alert(error.message); await reloadProducts(); }
+function render() {
+ list.innerHTML=products.length?products.map(p=>`<div class="item"><div><strong>${p.nome}</strong><div class="muted">${p.categoria||'Outros'} • R$ ${Number(p.preco).toFixed(2)} • ${p.ativo?'Ativo':'Oculto'}</div></div><div><button onclick="toggleProduct(${p.id})">${p.ativo?'Ocultar':'Ativar'}</button> <button class="danger" onclick="removeProduct(${p.id})">Excluir</button></div></div>`).join(''):'<p>Nenhum produto cadastrado.</p>';
 }
 load();
 </script></body></html>
