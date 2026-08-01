@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel PedidoFlow</title>
+<style>
+*{box-sizing:border-box}body{font-family:Arial;margin:0;background:#f4f4f4;color:#222}.wrap{max-width:1000px;margin:auto;padding:20px}
+.card{background:white;border-radius:16px;padding:18px;margin-bottom:18px;box-shadow:0 6px 22px rgba(0,0,0,.07)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:9px}
+button{border:0;padding:10px 14px;border-radius:9px;cursor:pointer;font-weight:bold}.primary{background:#111;color:white}.danger{background:#b91c1c;color:white}
+.item{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #eee;padding:12px 0}.muted{color:#666;font-size:14px}
+@media(max-width:650px){.grid{grid-template-columns:1fr}.item{flex-direction:column}}
+</style>
+</head>
+<body><div class="wrap">
+<h1>Painel PedidoFlow</h1>
+<p><a href="index.html">Abrir cardápio</a></p>
+
+<section class="card"><h2>Configurações da loja</h2>
+<div class="grid">
+<input id="storeName" placeholder="Nome da loja"><input id="whatsapp" placeholder="WhatsApp: 5573999999999">
+<input id="deliveryFee" type="number" step="0.01" placeholder="Taxa de entrega"><input id="storeAddress" placeholder="Cidade/endereço">
+<input id="pixKey" placeholder="Chave Pix"><select id="open"><option value="true">Loja aberta</option><option value="false">Loja fechada</option></select>
+</div><button class="primary" style="margin-top:12px" onclick="saveSettings()">Salvar configurações</button></section>
+
+<section class="card"><h2>Cadastrar produto</h2>
+<div class="grid">
+<input id="name" placeholder="Nome do produto"><input id="price" type="number" step="0.01" placeholder="Preço">
+<input id="category" placeholder="Categoria"><input id="image" placeholder="URL da imagem">
+<textarea id="description" class="grid" placeholder="Descrição"></textarea>
+<select id="active"><option value="true">Ativo</option><option value="false">Oculto</option></select>
+</div><button class="primary" style="margin-top:12px" onclick="addProduct()">Adicionar produto</button></section>
+
+<section class="card"><h2>Produtos</h2><div id="list"></div></section>
+</div>
+<script>
+const defaults={storeName:'PedidoFlow Lanches',whatsapp:'5573999999999',deliveryFee:5,open:true,address:'Jequié - BA',pixKey:''};
+let settings=JSON.parse(localStorage.getItem('pf_settings')||'null')||defaults;
+let products=JSON.parse(localStorage.getItem('pf_products')||'[]');
+
+function load(){
+ storeName.value=settings.storeName||'';whatsapp.value=settings.whatsapp||'';deliveryFee.value=settings.deliveryFee||0;
+ storeAddress.value=settings.address||'';pixKey.value=settings.pixKey||'';open.value=String(settings.open);
+ render();
+}
+function saveSettings(){
+ settings={storeName:storeName.value,whatsapp:whatsapp.value.replace(/\D/g,''),deliveryFee:Number(deliveryFee.value||0),
+ address:storeAddress.value,pixKey:pixKey.value,open:open.value==='true'};
+ localStorage.setItem('pf_settings',JSON.stringify(settings));alert('Configurações salvas.');
+}
+function addProduct(){
+ if(!name.value||!price.value) return alert('Informe nome e preço.');
+ products.push({id:Date.now(),name:name.value,price:Number(price.value),category:category.value||'Outros',
+ description:description.value||'',image:image.value||'https://via.placeholder.com/600x400?text=Produto',active:active.value==='true'});
+ localStorage.setItem('pf_products',JSON.stringify(products));
+ name.value=price.value=category.value=image.value=description.value='';render();
+}
+function removeProduct(id){
+ if(!confirm('Excluir este produto?'))return;
+ products=products.filter(p=>p.id!==id);localStorage.setItem('pf_products',JSON.stringify(products));render();
+}
+function toggleProduct(id){
+ const p=products.find(x=>x.id===id);p.active=!p.active;localStorage.setItem('pf_products',JSON.stringify(products));render();
+}
+function render(){
+ list.innerHTML=products.length?products.map(p=>`<div class="item"><div><strong>${p.name}</strong><div class="muted">${p.category} • R$ ${p.price.toFixed(2)} • ${p.active?'Ativo':'Oculto'}</div></div>
+ <div><button onclick="toggleProduct(${p.id})">${p.active?'Ocultar':'Ativar'}</button> <button class="danger" onclick="removeProduct(${p.id})">Excluir</button></div></div>`).join(''):'<p>Nenhum produto cadastrado.</p>';
+}
+load();
+</script></body></html>

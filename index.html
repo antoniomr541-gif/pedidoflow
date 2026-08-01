@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PedidoFlow</title>
+  <style>
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f7f7f7;color:#222}
+    header{background:#111;color:white;padding:18px;position:sticky;top:0;z-index:3}
+    .wrap{max-width:1100px;margin:auto;padding:18px}.hero{display:flex;justify-content:space-between;gap:16px;align-items:center}
+    .badge{background:#1f9d55;color:white;padding:6px 10px;border-radius:999px;font-size:13px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+    .card{background:white;border-radius:16px;overflow:hidden;box-shadow:0 6px 22px rgba(0,0,0,.08)}
+    .card img{width:100%;height:150px;object-fit:cover;background:#ddd}.card .p{padding:14px}
+    button{border:0;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:bold}
+    .primary{background:#111;color:#fff}.add{width:100%;background:#ff6b00;color:#fff}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.toolbar input,.toolbar select,.checkout input,.checkout select,.checkout textarea{
+      width:100%;padding:11px;border:1px solid #ccc;border-radius:10px
+    }
+    .toolbar input{flex:1;min-width:220px}.toolbar select{width:220px}
+    .cart{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:14px 18px;border-radius:999px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+    dialog{border:0;border-radius:18px;max-width:680px;width:95%;padding:0}.modal{padding:20px}.row{display:flex;justify-content:space-between;gap:12px;align-items:center}
+    .cart-item{padding:10px 0;border-bottom:1px solid #eee}.muted{color:#666;font-size:14px}.total{font-size:20px;font-weight:bold}
+    .checkout{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.full{grid-column:1/-1}
+    @media(max-width:640px){.checkout{grid-template-columns:1fr}.hero{align-items:flex-start;flex-direction:column}.cart{left:16px;right:16px;text-align:center}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap hero">
+    <div><h1 id="storeName" style="margin:0">PedidoFlow</h1><div class="muted" id="storeInfo" style="color:#ddd"></div></div>
+    <span class="badge" id="storeStatus">Aberto</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="toolbar">
+    <input id="search" placeholder="Buscar produtos..." />
+    <select id="category"><option value="">Todas as categorias</option></select>
+  </div>
+  <div id="products" class="grid"></div>
+</main>
+
+<button class="cart" onclick="openCart()">🛒 Ver carrinho (<span id="cartCount">0</span>)</button>
+
+<dialog id="cartDialog">
+  <div class="modal">
+    <div class="row"><h2>Seu pedido</h2><button onclick="cartDialog.close()">✕</button></div>
+    <div id="cartItems"></div>
+    <div class="row" style="margin-top:12px"><span>Subtotal</span><strong id="subtotal">R$ 0,00</strong></div>
+    <div class="row"><span>Entrega</span><strong id="deliveryFee">R$ 0,00</strong></div>
+    <div class="row total"><span>Total</span><span id="total">R$ 0,00</span></div>
+
+    <div class="checkout">
+      <input id="customerName" placeholder="Nome do cliente" />
+      <input id="customerPhone" placeholder="Telefone" />
+      <select id="deliveryType">
+        <option value="Entrega">Entrega</option>
+        <option value="Retirada">Retirada</option>
+      </select>
+      <select id="payment">
+        <option>Pix</option><option>Dinheiro</option><option>Cartão na entrega</option>
+      </select>
+      <input class="full" id="address" placeholder="Endereço completo" />
+      <input id="neighborhood" placeholder="Bairro" />
+      <input id="reference" placeholder="Ponto de referência" />
+      <textarea class="full" id="notes" placeholder="Observações do pedido"></textarea>
+    </div>
+    <button class="primary full" style="width:100%;margin-top:14px" onclick="sendWhatsApp()">Enviar pedido no WhatsApp</button>
+  </div>
+</dialog>
+
+<script>
+const defaultProducts = [
+ {id:1,name:'X-Burguer',price:18,category:'Hambúrgueres',description:'Pão, carne, queijo e salada',image:'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80',active:true},
+ {id:2,name:'Pizza Calabresa',price:42,category:'Pizzas',description:'Molho, queijo, calabresa e cebola',image:'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=900&q=80',active:true},
+ {id:3,name:'Coxinha',price:7,category:'Salgados',description:'Coxinha de frango cremosa',image:'https://images.unsplash.com/photo-1625944525533-473f1a3d54e7?auto=format&fit=crop&w=900&q=80',active:true},
+ {id:4,name:'Refrigerante Lata',price:6,category:'Bebidas',description:'350 ml',image:'https://images.unsplash.com/photo-1629203849820-fdd70d49c38e?auto=format&fit=crop&w=900&q=80',active:true}
+];
+const defaultSettings = {storeName:'PedidoFlow Lanches',whatsapp:'5573999999999',deliveryFee:5,open:true,address:'Jequié - BA',pixKey:''};
+
+let products = JSON.parse(localStorage.getItem('pf_products') || 'null') || defaultProducts;
+let settings = JSON.parse(localStorage.getItem('pf_settings') || 'null') || defaultSettings;
+let cart = [];
+
+const money = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+function saveDefaults(){localStorage.setItem('pf_products',JSON.stringify(products));localStorage.setItem('pf_settings',JSON.stringify(settings))}
+saveDefaults();
+
+function renderHeader(){
+ document.getElementById('storeName').textContent=settings.storeName;
+ document.getElementById('storeInfo').textContent=settings.address || '';
+ const st=document.getElementById('storeStatus'); st.textContent=settings.open?'Aberto':'Fechado'; st.style.background=settings.open?'#1f9d55':'#b91c1c';
+}
+function renderCategories(){
+ const cats=[...new Set(products.filter(p=>p.active).map(p=>p.category))];
+ category.innerHTML='<option value="">Todas as categorias</option>'+cats.map(c=>`<option>${c}</option>`).join('');
+}
+function renderProducts(){
+ const q=search.value.toLowerCase(); const c=category.value;
+ const list=products.filter(p=>p.active && (!c||p.category===c) && (p.name.toLowerCase().includes(q)||p.description.toLowerCase().includes(q)));
+ productsEl=document.getElementById('products');
+ productsEl.innerHTML=list.map(p=>`
+ <article class="card"><img src="${p.image}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/600x400?text=Produto'">
+ <div class="p"><div class="muted">${p.category}</div><h3>${p.name}</h3><p>${p.description}</p>
+ <div class="row"><strong>${money(p.price)}</strong></div>
+ <button class="add" onclick="addToCart(${p.id})">Adicionar</button></div></article>`).join('');
+}
+function addToCart(id){
+ const p=products.find(x=>x.id===id); const found=cart.find(x=>x.id===id);
+ if(found) found.qty++; else cart.push({...p,qty:1});
+ updateCartCount();
+}
+function updateCartCount(){cartCount.textContent=cart.reduce((a,b)=>a+b.qty,0)}
+function openCart(){renderCart();cartDialog.showModal()}
+function renderCart(){
+ cartItems.innerHTML=cart.length?cart.map(i=>`<div class="cart-item row"><div><strong>${i.name}</strong><div class="muted">${money(i.price)} x ${i.qty}</div></div>
+ <div><button onclick="changeQty(${i.id},-1)">−</button> <button onclick="changeQty(${i.id},1)">+</button></div></div>`).join(''):'<p>Seu carrinho está vazio.</p>';
+ const sub=cart.reduce((s,i)=>s+i.price*i.qty,0);
+ const fee=deliveryType.value==='Entrega'?Number(settings.deliveryFee||0):0;
+ subtotal.textContent=money(sub); deliveryFee.textContent=money(fee); total.textContent=money(sub+fee);
+}
+function changeQty(id,d){const i=cart.find(x=>x.id===id);if(!i)return;i.qty+=d;if(i.qty<=0)cart=cart.filter(x=>x.id!==id);updateCartCount();renderCart()}
+deliveryType.addEventListener('change',()=>{address.disabled=deliveryType.value==='Retirada';neighborhood.disabled=deliveryType.value==='Retirada';reference.disabled=deliveryType.value==='Retirada';renderCart()})
+function sendWhatsApp(){
+ if(!cart.length) return alert('Adicione pelo menos um item.');
+ if(!customerName.value.trim()) return alert('Informe seu nome.');
+ if(deliveryType.value==='Entrega' && !address.value.trim()) return alert('Informe o endereço.');
+ const sub=cart.reduce((s,i)=>s+i.price*i.qty,0), fee=deliveryType.value==='Entrega'?Number(settings.deliveryFee||0):0;
+ const order=Math.floor(1000+Math.random()*9000);
+ let msg=`*NOVO PEDIDO #${order}*%0A%0A*Cliente:* ${customerName.value}%0A*Telefone:* ${customerPhone.value}%0A*Tipo:* ${deliveryType.value}%0A`;
+ if(deliveryType.value==='Entrega') msg+=`*Endereço:* ${address.value}%0A*Bairro:* ${neighborhood.value}%0A*Referência:* ${reference.value}%0A`;
+ msg+=`*Pagamento:* ${payment.value}%0A%0A*ITENS:*%0A`;
+ cart.forEach(i=>msg+=`${i.qty}x ${i.name} - ${money(i.price*i.qty)}%0A`);
+ msg+=`%0A*Subtotal:* ${money(sub)}%0A*Entrega:* ${money(fee)}%0A*TOTAL:* ${money(sub+fee)}%0A`;
+ if(notes.value) msg+=`%0A*Observações:* ${notes.value}`;
+ if(payment.value==='Pix' && settings.pixKey) msg+=`%0A*Chave Pix:* ${settings.pixKey}`;
+ const phone=(settings.whatsapp||'').replace(/\D/g,'');
+ if(phone.length<12) return alert('WhatsApp da loja inválido. Configure no painel.');
+ window.open(`https://wa.me/${phone}?text=${msg}`,'_blank');
+}
+search.addEventListener('input',renderProducts);category.addEventListener('change',renderProducts);
+renderHeader();renderCategories();renderProducts();
+</script>
+</body>
+</html>
