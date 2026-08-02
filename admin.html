@@ -59,7 +59,7 @@ async function refreshAll(){await Promise.all([loadProducts(),loadOrders(),loadC
 
 async function loadOrders(){
  const {data,error}=await db.from('pedidos').select('*').order('criado_em',{ascending:false}).limit(100);
- if(error){ordersList.innerHTML=`<p class="muted">Erro ao carregar pedidos: ${error.message}</p>`;return}
+ if(error){ordersList.innerHTML=`<div class="notice">Erro ao carregar pedidos: ${error.message}</div>`;dashboardOrders.innerHTML=ordersList.innerHTML;return}
  orders=data||[];
  const today=new Date();today.setHours(0,0,0,0);const todays=orders.filter(p=>new Date(p.criado_em)>=today);
  const pending=orders.filter(p=>['Recebido','Preparando'].includes(p.status));
@@ -101,10 +101,26 @@ async function toggleProduct(id,active){await db.from('produtos').update({ativo:
 async function removeProduct(id){if(!confirm('Excluir produto?'))return;await db.from('produtos').delete().eq('id',id);await loadProducts()}
 
 async function loadClients(){
- const {data,error}=await db.from('perfis').select('id,nome,whatsapp,aceita_promocoes,criado_em').eq('role','cliente').order('criado_em',{ascending:false});if(error)return;clients=data||[];
- clientsList.innerHTML=clients.length?clients.map(c=>`<div class="list-item"><div class="row"><div><strong>${c.nome||'Cliente'}</strong><div class="muted">${c.whatsapp||''}</div></div><span class="status-pill">${c.aceita_promocoes?'Aceita promoções':'Sem autorização'}</span></div></div>`).join(''):'<p class="muted">Nenhum cliente cadastrado.</p>';
- promotionClients=clients.filter(c=>c.aceita_promocoes&&c.whatsapp);consentedCount.textContent=`${promotionClients.length} cliente${promotionClients.length===1?'':'s'}`;
- promotionCustomers.innerHTML=promotionClients.length?promotionClients.map((c,i)=>`<div class="list-item"><div class="row"><div><strong>${c.nome}</strong><div class="muted">${c.whatsapp}</div></div><button class="btn btn-light" onclick="openPromotionFor(${i})">Enviar</button></div></div>`).join(''):'<p class="muted">Nenhum cliente autorizado.</p>';
+ const {data,error}=await db.from('clientes')
+   .select('id,nome,whatsapp,aceita_promocoes,criado_em')
+   .order('criado_em',{ascending:false});
+ if(error){
+   clientsList.innerHTML=`<p class="muted">Erro ao carregar clientes: ${error.message}</p>`;
+   return;
+ }
+ clients=data||[];
+ clientsList.innerHTML=clients.length?clients.map(c=>`
+   <div class="list-item"><div class="row">
+     <div><strong>${c.nome||'Cliente'}</strong><div class="muted">${c.whatsapp||''}</div></div>
+     <span class="status-pill">${c.aceita_promocoes?'Aceita promoções':'Sem autorização'}</span>
+   </div></div>`).join(''):'<p class="muted">Nenhum cliente cadastrado.</p>';
+ promotionClients=clients.filter(c=>c.aceita_promocoes&&c.whatsapp);
+ consentedCount.textContent=`${promotionClients.length} cliente${promotionClients.length===1?'':'s'}`;
+ promotionCustomers.innerHTML=promotionClients.length?promotionClients.map((c,i)=>`
+   <div class="list-item"><div class="row">
+     <div><strong>${c.nome}</strong><div class="muted">${c.whatsapp}</div></div>
+     <button class="btn btn-light" onclick="openPromotionFor(${i})">Enviar</button>
+   </div></div>`).join(''):'<p class="muted">Nenhum cliente autorizado.</p>';
 }
 function promotionText(){const m=promotionMessage.value.trim();if(!m){alert('Escreva a promoção.');return null}return `${m}\n\nPeça aqui: ${location.origin}/\n\nResponda SAIR para não receber mais promoções.`}
 function openPromotionFor(i){const text=promotionText();if(!text)return;let phone=digits(promotionClients[i].whatsapp);if(!phone.startsWith('55'))phone='55'+phone;window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`,'_blank')}

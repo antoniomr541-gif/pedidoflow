@@ -1,24 +1,127 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Cliente | PedidoFlow</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
-<body class="auth-body"><div class="auth-card"><div class="logo">🍔</div><h1>Área do cliente</h1><p class="muted">A conta é opcional. Use-a para histórico e promoções autorizadas.</p>
-<input id="nameInput" placeholder="Seu nome"><input id="phoneInput" placeholder="Celular com DDD"><input id="passwordInput" type="password" placeholder="Senha (mínimo 6 caracteres)">
-<label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0 12px;font-size:13px"><input id="marketingConsent" type="checkbox" style="width:auto;margin:2px 0 0"><span>Autorizo promoções pelo WhatsApp.</span></label>
-<button class="btn btn-primary" onclick="signIn()">Entrar</button><button class="btn btn-light" onclick="signUp()">Criar conta</button>
-<div id="messageElement" class="message"></div><p style="text-align:center"><a href="index.html">Voltar ao cardápio</a></p></div>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cliente | PedidoFlow</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:#f3f4f6;border-radius:14px;padding:4px;margin:18px 0}
+.tabs button{border:0;padding:11px;border-radius:11px;font-weight:800;background:transparent}
+.tabs button.active{background:#111827;color:#fff}
+.signup-only{display:block}
+.login-mode .signup-only{display:none}
+.address-grid{display:grid;grid-template-columns:1fr 110px;gap:10px}
+@media(max-width:520px){.address-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body class="auth-body">
+<div class="auth-card" id="authCard">
+  <div class="logo">🍔</div>
+  <h1>Área do cliente</h1>
+  <p class="muted">Cadastro com celular e senha. Não usa e-mail.</p>
+
+  <div class="tabs">
+    <button id="signupTab" class="active" onclick="setMode('signup')">Criar conta</button>
+    <button id="loginTab" onclick="setMode('login')">Entrar</button>
+  </div>
+
+  <div class="signup-only"><input id="nameInput" placeholder="Nome completo"></div>
+  <input id="phoneInput" inputmode="numeric" placeholder="Celular com DDD">
+  <input id="passwordInput" type="password" placeholder="Senha (mínimo 6 caracteres)">
+
+  <div class="signup-only">
+    <div class="address-grid">
+      <input id="addressInput" placeholder="Rua ou avenida">
+      <input id="numberInput" inputmode="numeric" placeholder="Número">
+    </div>
+    <input id="neighborhoodInput" placeholder="Bairro">
+    <input id="cityInput" placeholder="Cidade" value="Jequié">
+    <input id="referenceInput" placeholder="Referência (opcional)">
+    <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0 12px;font-size:13px">
+      <input id="marketingConsent" type="checkbox" style="width:auto;margin:2px 0 0">
+      <span>Autorizo receber promoções pelo WhatsApp.</span>
+    </label>
+  </div>
+
+  <button id="mainButton" class="btn btn-primary" onclick="submitAuth()">Criar conta e continuar</button>
+  <div id="messageElement" class="message"></div>
+  <p style="text-align:center"><a href="index.html">Voltar ao cardápio</a></p>
+</div>
+
 <script>
-const db=supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc'),digits=v=>String(v||'').replace(/\D/g,''),syntheticEmail=p=>`cliente_${digits(p)}@pedidoflow.local`;
-function show(t,ok=false){messageElement.textContent=t;messageElement.style.color=ok?'#15803d':'#b91c1c'}
+const db=supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
+let mode='signup';
+const digits=v=>String(v||'').replace(/\D/g,'');
+
+function setMode(next){
+  mode=next;
+  authCard.classList.toggle('login-mode',mode==='login');
+  signupTab.classList.toggle('active',mode==='signup');
+  loginTab.classList.toggle('active',mode==='login');
+  mainButton.textContent=mode==='signup'?'Criar conta e continuar':'Entrar e continuar';
+  messageElement.textContent='';
+}
+
+function show(text,ok=false){
+  messageElement.textContent=text;
+  messageElement.style.color=ok?'#15803d':'#b91c1c';
+}
+
+async function submitAuth(){
+  if(mode==='signup')return signUp();
+  return signIn();
+}
+
 async function signUp(){
- const nome=nameInput.value.trim(),phone=digits(phoneInput.value),password=passwordInput.value;
- if(nome.length<3)return show('Informe um nome válido.');if(phone.length<10)return show('Informe um celular válido.');if(password.length<6)return show('A senha precisa ter 6 caracteres.');
- const {data,error}=await db.auth.signUp({email:syntheticEmail(phone),password,options:{data:{nome,whatsapp:phone}}});
- if(error)return show(error.message);if(!data.session)return show('No Supabase, desative Confirm email.');
- const {error:profileError}=await db.from('perfis').upsert({id:data.user.id,nome,whatsapp:phone,aceita_promocoes:marketingConsent.checked,consentimento_em:marketingConsent.checked?new Date().toISOString():null,role:'cliente'},{onConflict:'id'});
- if(profileError)return show(profileError.message);location.href='conta.html';
+  const payload={
+    p_nome:nameInput.value.trim(),
+    p_whatsapp:digits(phoneInput.value),
+    p_senha:passwordInput.value,
+    p_endereco:addressInput.value.trim(),
+    p_numero:digits(numberInput.value),
+    p_bairro:neighborhoodInput.value.trim(),
+    p_cidade:cityInput.value.trim(),
+    p_referencia:referenceInput.value.trim(),
+    p_aceita_promocoes:marketingConsent.checked
+  };
+
+  show('Criando cadastro...',true);
+  const {data,error}=await db.rpc('cadastrar_cliente',payload);
+  if(error)return show(error.message.replace('P0001: ',''));
+
+  localStorage.setItem('pf_cliente_token',data.token);
+  localStorage.setItem('pf_cliente',JSON.stringify(data.cliente));
+  continueToOrder();
 }
+
 async function signIn(){
- const phone=digits(phoneInput.value),password=passwordInput.value;if(phone.length<10)return show('Informe seu celular.');if(!password)return show('Informe a senha.');
- const {data,error}=await db.auth.signInWithPassword({email:syntheticEmail(phone),password});if(error)return show('Celular ou senha inválidos.');
- const {data:p}=await db.from('perfis').select('role').eq('id',data.user.id).single();if(p?.role==='dono'){await db.auth.signOut();return show('Use o acesso do dono.')}location.href='conta.html';
+  show('Entrando...',true);
+  const {data,error}=await db.rpc('login_cliente',{
+    p_whatsapp:digits(phoneInput.value),
+    p_senha:passwordInput.value
+  });
+  if(error)return show(error.message.replace('P0001: ',''));
+
+  localStorage.setItem('pf_cliente_token',data.token);
+  localStorage.setItem('pf_cliente',JSON.stringify(data.cliente));
+  continueToOrder();
 }
-</script></body></html>
+
+function continueToOrder(){
+  const target=sessionStorage.getItem('pf_return_after_login')||'index.html';
+  sessionStorage.removeItem('pf_return_after_login');
+  location.href=target;
+}
+
+(async()=>{
+  const token=localStorage.getItem('pf_cliente_token');
+  if(!token)return;
+  const {data}=await db.rpc('obter_cliente_sessao',{p_token:token});
+  if(data)continueToOrder();
+  localStorage.removeItem('pf_cliente_token');
+  localStorage.removeItem('pf_cliente');
+})();
+</script>
+</body>
+</html>

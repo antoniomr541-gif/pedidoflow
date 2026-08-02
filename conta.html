@@ -1,17 +1,67 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Minha conta | PedidoFlow</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
-<body><div class="topbar"><div class="container topbar-inner"><strong>🍔 PedidoFlow</strong><div><a href="index.html">Cardápio</a> · <button class="btn btn-light" onclick="logout()">Sair</button></div></div></div>
-<main class="container" style="padding-top:20px"><div class="card"><div class="muted">Conta do cliente</div><h1 id="customerName">Carregando...</h1><p id="customerPhone" class="muted"></p></div>
-<div class="card"><div class="row"><h2>Seus pedidos</h2><a class="btn btn-primary" href="index.html">Fazer pedido</a></div><div id="orders"></div></div></main>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Minha conta | PedidoFlow</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="topbar"><div class="container topbar-inner">
+  <strong>🍔 PedidoFlow</strong>
+  <div><a href="index.html">Cardápio</a> · <button class="btn btn-light" onclick="logout()">Sair</button></div>
+</div></div>
+
+<main class="container" style="padding-top:20px">
+  <div class="card">
+    <div class="muted">Conta do cliente</div>
+    <h1 id="customerName">Carregando...</h1>
+    <p id="customerPhone" class="muted"></p>
+    <div class="order-detail"><strong>Endereço salvo</strong><div id="savedAddress" class="muted"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="row"><h2>Seus pedidos</h2><a class="btn btn-primary" href="index.html">Fazer pedido</a></div>
+    <div id="orders"></div>
+  </div>
+</main>
+
 <script>
-const db=supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc'),money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const db=supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
+const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
 async function init(){
- const {data:{user}}=await db.auth.getUser();if(!user)return location.href='login.html';
- const {data:p}=await db.from('perfis').select('nome,role,whatsapp').eq('id',user.id).single();if(p?.role==='dono')return location.href='admin.html';
- customerName.textContent=p?.nome||'Cliente';customerPhone.textContent=p?.whatsapp||'';
- const {data,error}=await db.from('pedidos').select('*').eq('cliente_id',user.id).order('criado_em',{ascending:false});
- if(error)return orders.innerHTML='<p class="muted">Erro ao carregar pedidos.</p>';
- orders.innerHTML=data.length?data.map(o=>`<div class="list-item"><div class="row"><strong>Pedido #${o.numero}</strong><span class="status-pill">${o.status}</span></div><p class="muted">${new Date(o.criado_em).toLocaleString('pt-BR')}</p><strong>${money(o.total)}</strong></div>`).join(''):'<p class="muted">Você ainda não fez pedidos.</p>';
+  const token=localStorage.getItem('pf_cliente_token');
+  if(!token)return location.href='login.html';
+
+  const {data:cliente,error}=await db.rpc('obter_cliente_sessao',{p_token:token});
+  if(error||!cliente){
+    logout();
+    return;
+  }
+
+  customerName.textContent=cliente.nome||'Cliente';
+  customerPhone.textContent=cliente.whatsapp||'';
+  savedAddress.textContent=[cliente.endereco,cliente.numero,cliente.bairro,cliente.cidade,cliente.referencia].filter(Boolean).join(' · ');
+
+  const {data,error:ordersError}=await db.rpc('listar_pedidos_cliente',{p_token:token});
+  if(ordersError)return orders.innerHTML='<p class="muted">Erro ao carregar pedidos.</p>';
+
+  orders.innerHTML=data.length?data.map(o=>`
+    <div class="list-item">
+      <div class="row"><strong>Pedido #${o.numero}</strong><span class="status-pill">${o.status}</span></div>
+      <p class="muted">${new Date(o.criado_em).toLocaleString('pt-BR')}</p>
+      <strong>${money(o.total)}</strong>
+    </div>`).join(''):'<p class="muted">Você ainda não fez pedidos.</p>';
 }
-async function logout(){await db.auth.signOut();location.href='index.html'}init();
-</script></body></html>
+
+function logout(){
+  localStorage.removeItem('pf_cliente_token');
+  localStorage.removeItem('pf_cliente');
+  location.href='index.html';
+}
+
+init();
+</script>
+</body>
+</html>
