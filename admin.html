@@ -235,7 +235,7 @@ async function downloadCampaignImage(){
   window.open(url,'_blank');
 }
 async function checkWhatsAppApi(){
-  try{const r=await fetch('/.netlify/functions/whatsapp-status');const data=await r.json();whatsappApiStatus.textContent=data.configured?'API configurada':'API não configurada';whatsappApiStatus.classList.toggle('api-ready',!!data.configured)}catch{whatsappApiStatus.textContent='API não configurada'}
+  try{const r=await fetch('/api/whatsapp-status');const data=await r.json();whatsappApiStatus.textContent=data.configured?'API configurada':'API não configurada';whatsappApiStatus.classList.toggle('api-ready',!!data.configured)}catch{whatsappApiStatus.textContent='API não configurada'}
 }
 function setCampaignProgress(done,total,text){campaignProgressWrap.classList.remove('hidden');campaignProgressBar.style.width=`${Math.round((done/Math.max(total,1))*100)}%`;promotionProgress.textContent=text;}
 async function sendAutomaticCampaign(){
@@ -252,7 +252,7 @@ async function sendAutomaticCampaign(){
   for(let i=0;i<promotionClients.length;i+=batchSize){
     const recipients=promotionClients.slice(i,i+batchSize).map(c=>({id:c.id,nome:c.nome,whatsapp:c.whatsapp}));
     try{
-      const response=await fetch('/.netlify/functions/send-whatsapp-campaign',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({title,message,imageUrl,link,recipients})});
+      const response=await fetch('/api/enviar-promocao',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({title,message,imageUrl,link,recipients})});
       const result=await response.json();if(!response.ok)throw new Error(result.error||'Falha ao enviar campanha.');sent+=result.sent||0;failed+=result.failed||0;
     }catch(e){failed+=recipients.length;promotionProgress.textContent=e.message;}
     setCampaignProgress(Math.min(i+batchSize,promotionClients.length),promotionClients.length,`Enviadas: ${sent} · Falhas: ${failed}`);

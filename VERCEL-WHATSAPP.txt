@@ -1,0 +1,24 @@
+FLOW PEDIDOS — CONFIGURAÇÃO NA VERCEL
+
+1. Envie TODOS os arquivos deste pacote para a raiz do repositório GitHub.
+2. Na Vercel, abra: Projeto > Settings > Environment Variables.
+3. Crie:
+
+WHATSAPP_TOKEN=token permanente da Meta
+WHATSAPP_PHONE_NUMBER_ID=ID do número definitivo
+WHATSAPP_TEMPLATE_NAME=promocao_pedidoflow
+WHATSAPP_TEMPLATE_LANGUAGE=pt_BR
+WHATSAPP_API_VERSION=v23.0
+SUPABASE_URL=https://SEU-PROJETO.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=chave service_role do Supabase
+
+4. Faça Redeploy depois de salvar as variáveis.
+5. O modelo da Meta precisa ter:
+   - cabeçalho do tipo IMAGEM;
+   - corpo com {{1}} = nome do cliente e {{2}} = mensagem;
+   - botão URL dinâmica na posição 0, caso queira enviar o link.
+
+IMPORTANTE
+- Não coloque o token nem a service_role no admin.html ou no GitHub.
+- O ID usado no teste da Meta pertence ao número de teste. Troque pelo ID do número definitivo quando conectá-lo.
+- O erro 130497 continuará ocorrendo com uma conta restrita para o Brasil; o código não remove restrições da Meta.
