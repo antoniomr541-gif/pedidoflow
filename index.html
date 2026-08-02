@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PedidoFlow</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="topbar"><div class="container topbar-inner">
+  <div><span id="storeStatus">Loja aberta</span></div>
+  <div><span id="storeAddress">Jequié - BA</span> · <a id="accountLink" href="login.html"><strong>Entrar (opcional)</strong></a></div>
+</div></div>
+
+<section class="hero"><div class="container hero-grid">
+  <div class="brand"><div class="logo">🍔</div><div>
+    <h1 id="storeName">PedidoFlow Lanches</h1>
+    <p id="storeDescription">Escolha seus produtos, finalize o pedido e envie direto para o WhatsApp.</p>
+  </div></div>
+  <div class="hero-card"><strong>Pedido rápido e organizado</strong><p>Cardápio online, checkout completo e atendimento direto pelo WhatsApp.</p></div>
+</div></section>
+
+<main class="container">
+  <div class="search-wrap"><div class="search-box">🔎 <input id="search" placeholder="Busque hambúrguer, pizza, bebida..."></div></div>
+  <div class="categories" id="categories"></div>
+  <div class="section-head"><div><h2>Cardápio</h2><span id="productCount">0 produtos</span></div></div>
+  <div class="grid-products" id="products"></div>
+</main>
+
+<button class="floating-cart" onclick="openCart()">🛒 Ver carrinho <span class="count" id="cartCount">0</span></button>
+
+<dialog id="cartDialog"><div class="modal">
+  <div class="row"><h2>Seu pedido</h2><button class="btn btn-light" onclick="cartDialog.close()">✕</button></div>
+  <div id="cartItems"></div>
+  <div class="totals">
+    <div class="line"><span>Subtotal</span><strong id="subtotal">R$ 0,00</strong></div>
+    <div class="line"><span>Entrega</span><strong id="deliveryFee">R$ 0,00</strong></div>
+    <div class="line grand"><span>Total</span><span id="total">R$ 0,00</span></div>
+  </div>
+  <div class="checkout">
+    <input id="customerName" placeholder="Seu nome">
+    <input id="customerPhone" placeholder="Seu telefone">
+    <select id="deliveryType"><option>Entrega</option><option>Retirada</option></select>
+    <select id="payment"><option>Pix</option><option>Dinheiro</option><option>Cartão na entrega</option></select>
+    <input class="full" id="address" placeholder="Endereço completo">
+    <input id="neighborhood" placeholder="Bairro">
+    <input id="reference" placeholder="Ponto de referência">
+    <textarea class="full" id="generalNotes" placeholder="Observações gerais"></textarea>
+  </div>
+  <button class="btn btn-success full" style="width:100%;margin-top:14px" onclick="sendOrder()">Enviar pedido pelo WhatsApp</button>
+</div></dialog>
+
+<footer><a href="dono.html">Acesso administrativo</a></footer>
+
+<script>
+const db = supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
+let products=[], settings={nome_loja:'PedidoFlow Lanches',whatsapp:'5573999999999',taxa_entrega:5,endereco:'Jequié - BA',chave_pix:'',loja_aberta:true}, cart=[], activeCategory='Todos';
+const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+async function loadData(){
+  const [pRes,sRes]=await Promise.all([
+    db.from('produtos').select('*').eq('ativo',true).order('id'),
+    db.from('configuracoes').select('*').order('id').limit(1)
+  ]);
+  products=pRes.data||[];
+  if(sRes.data?.length) settings=sRes.data[0];
+  renderHeader(); renderCategories(); renderProducts(); renderAccount();
+}
+
+async function renderAccount(){
+  const {data:{session}}=await db.auth.getSession();
+  if(!session){accountLink.textContent='Entrar (opcional)';return;}
+  const {data:profile}=await db.from('perfis').select('nome,role').eq('id',session.user.id).single();
+  accountLink.textContent=profile?.nome?`Olá, ${profile.nome.split(' ')[0]}`:'Minha conta';
+  accountLink.href=profile?.role==='dono'?'admin.html':'conta.html';
+}
+
+function renderHeader(){
+  storeName.textContent=settings.nome_loja||'PedidoFlow Lanches';
+  storeAddress.textContent=settings.endereco||'';
+  storeStatus.textContent=settings.loja_aberta?'Loja aberta':'Loja fechada';
+}
+
+function renderCategories(){
+  const cats=['Todos',...new Set(products.map(p=>p.categoria||'Outros'))];
+  categories.innerHTML=cats.map(c=>`<button class="chip ${c===activeCategory?'active':''}" onclick="setCategory('${c.replaceAll("'","\'")}')">${c}</button>`).join('');
+}
+function setCategory(c){activeCategory=c;renderCategories();renderProducts()}
+
+function renderProducts(){
+  const q=search.value.toLowerCase().trim();
+  const filtered=products.filter(p=>(activeCategory==='Todos'||p.categoria===activeCategory)&&((p.nome||'').toLowerCase().includes(q)||(p.descricao||'').toLowerCase().includes(q)));
+  productCount.textContent=`${filtered.length} produto${filtered.length===1?'':'s'}`;
+  document.getElementById('products').innerHTML=filtered.length?filtered.map((p,i)=>`
+  <article class="product-card">
+    ${i<2?'<span class="badge">Mais pedido</span>':''}
+    <img src="${p.imagem_url||'https://via.placeholder.com/800x500?text=Produto'}" onerror="this.src='https://via.placeholder.com/800x500?text=Produto'">
+    <div class="product-body">
+      <div class="category-label">${p.categoria||'Outros'}</div>
+      <h3>${p.nome}</h3><div class="description">${p.descricao||''}</div>
+      <div class="price-row"><div class="price">${money(p.preco)}</div><button class="btn btn-primary" onclick="addToCart(${p.id})">Adicionar</button></div>
+    </div>
+  </article>`).join(''):'<div class="empty">Nenhum produto encontrado.</div>';
+}
+
+function addToCart(id){
+  const p=products.find(x=>x.id===id), found=cart.find(x=>x.id===id);
+  if(found)found.qty++; else cart.push({...p,qty:1,note:''});
+  cartCount.textContent=cart.reduce((a,b)=>a+b.qty,0);
+}
+function openCart(){renderCart();cartDialog.showModal()}
+function renderCart(){
+  cartItems.innerHTML=cart.length?cart.map(i=>`
+  <div class="cart-item"><div><strong>${i.nome}</strong><div class="muted">${money(i.preco)} cada</div>
+  <input class="item-note" value="${i.note||''}" placeholder="Ex.: sem cebola" oninput="setNote(${i.id},this.value)"></div>
+  <div class="qty"><button onclick="changeQty(${i.id},-1)">−</button><strong>${i.qty}</strong><button onclick="changeQty(${i.id},1)">+</button></div></div>`).join(''):'<div class="empty">Seu carrinho está vazio.</div>';
+  const sub=cart.reduce((s,i)=>s+Number(i.preco)*i.qty,0), fee=deliveryType.value==='Entrega'?Number(settings.taxa_entrega||0):0;
+  subtotal.textContent=money(sub);deliveryFee.textContent=money(fee);total.textContent=money(sub+fee);
+}
+function changeQty(id,d){const i=cart.find(x=>x.id===id);if(!i)return;i.qty+=d;if(i.qty<=0)cart=cart.filter(x=>x.id!==id);cartCount.textContent=cart.reduce((a,b)=>a+b.qty,0);renderCart()}
+function setNote(id,n){const i=cart.find(x=>x.id===id);if(i)i.note=n}
+deliveryType.addEventListener('change',renderCart);
+
+async function saveOrder(orderNumber,sub,fee){
+  const {data:{user}}=await db.auth.getUser();
+  const payload={
+    numero:orderNumber,cliente_id:user?.id||null,cliente_nome:customerName.value.trim(),cliente_telefone:customerPhone.value.trim(),
+    tipo_entrega:deliveryType.value,endereco:deliveryType.value==='Entrega'?address.value.trim():'',bairro:deliveryType.value==='Entrega'?neighborhood.value.trim():'',
+    referencia:deliveryType.value==='Entrega'?reference.value.trim():'',pagamento:payment.value,observacoes:generalNotes.value.trim(),
+    subtotal:sub,taxa_entrega:fee,total:sub+fee,status:'Recebido',
+    itens:cart.map(i=>({produto_id:i.id,nome:i.nome,quantidade:i.qty,preco_unitario:Number(i.preco),observacao:i.note||''}))
+  };
+  const {error}=await db.from('pedidos').insert(payload); if(error)throw error;
+}
+
+async function sendOrder(){
+  if(!cart.length)return alert('Adicione produtos.');
+  if(!customerName.value.trim())return alert('Informe seu nome.');
+  if(deliveryType.value==='Entrega'&&!address.value.trim())return alert('Informe o endereço.');
+  if(!settings.loja_aberta)return alert('A loja está fechada.');
+  const sub=cart.reduce((s,i)=>s+Number(i.preco)*i.qty,0),fee=deliveryType.value==='Entrega'?Number(settings.taxa_entrega||0):0,order=Math.floor(1000+Math.random()*9000);
+  try{await saveOrder(order,sub,fee)}catch(e){if(!confirm('Não foi possível salvar no painel. Enviar mesmo assim pelo WhatsApp?'))return}
+  let text=`*NOVO PEDIDO #${order}*\n\n*Cliente:* ${customerName.value}\n*Telefone:* ${customerPhone.value}\n*Tipo:* ${deliveryType.value}\n`;
+  if(deliveryType.value==='Entrega')text+=`*Endereço:* ${address.value}\n*Bairro:* ${neighborhood.value}\n*Referência:* ${reference.value}\n`;
+  text+=`*Pagamento:* ${payment.value}\n\n*ITENS:*\n`;
+  cart.forEach(i=>{text+=`${i.qty}x ${i.nome} - ${money(Number(i.preco)*i.qty)}${i.note?` (${i.note})`:''}\n`});
+  text+=`\n*Subtotal:* ${money(sub)}\n*Entrega:* ${money(fee)}\n*TOTAL:* ${money(sub+fee)}`;
+  if(generalNotes.value)text+=`\n\n*Observações:* ${generalNotes.value}`;
+  if(payment.value==='Pix'&&settings.chave_pix)text+=`\n*Chave Pix:* ${settings.chave_pix}`;
+  let phone=String(settings.whatsapp||'').replace(/\D/g,''); if(!phone.startsWith('55'))phone='55'+phone;
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`,'_blank');
+}
+search.addEventListener('input',renderProducts);loadData();
+</script>
+</body></html>
