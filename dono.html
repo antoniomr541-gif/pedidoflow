@@ -1,14 +1,14 @@
 <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dono | PedidoFlow</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
-<body class="auth-body"><div class="auth-card"><div class="logo" style="background:#111827">🔐</div><h1>Dono da loja</h1><p class="muted">Acesso administrativo exclusivo.</p>
+<body class="auth-body"><div class="auth-card"><div class="logo" style="background:#111827">🔐</div><h1>Dono da loja</h1><p class="muted">Acesso administrativo.</p>
 <input id="emailInput" type="email" placeholder="E-mail do dono"><input id="passwordInput" type="password" placeholder="Senha">
 <button class="btn btn-dark" onclick="ownerSignIn()">Entrar no painel</button><div id="messageElement" class="message"></div><p style="text-align:center"><a href="index.html">Voltar ao cardápio</a></p></div>
 <script>
 const db=supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
-function show(t){messageElement.textContent=t;messageElement.style.color='#b91c1c'}
+function show(t,ok=false){messageElement.textContent=t;messageElement.style.color=ok?'#15803d':'#b91c1c'}
 async function ownerSignIn(){
  const email=emailInput.value.trim(),password=passwordInput.value;if(!email||!password)return show('Informe e-mail e senha.');
  const {data,error}=await db.auth.signInWithPassword({email,password});if(error)return show('E-mail ou senha inválidos.');
- const {data:p}=await db.from('perfis').select('role').eq('id',data.user.id).single();if(p?.role!=='dono'){await db.auth.signOut();return show('Esta conta não possui acesso administrativo.')}location.href='admin.html';
+ const {data:profile}=await db.from('perfis').select('role').eq('id',data.user.id).single();if(profile?.role!=='dono'){await db.auth.signOut();return show('Conta sem acesso de dono.')}location.href='admin.html';
 }
 </script></body></html>

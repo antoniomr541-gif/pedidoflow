@@ -8,16 +8,16 @@
 </head>
 <body>
 <div class="topbar"><div class="container topbar-inner">
-  <div id="storeStatus">Loja aberta</div>
-  <div><span id="storeAddress">Jequié - BA</span> · <a id="accountLink" href="login.html"><strong>Entrar</strong></a></div>
+  <div><span id="storeStatus">Loja aberta</span></div>
+  <div><span id="storeAddress">Jequié - BA</span> · <a id="accountLink" href="login.html"><strong>Entrar (opcional)</strong></a></div>
 </div></div>
 
 <section class="hero"><div class="container hero-grid">
   <div class="brand"><div class="logo">🍔</div><div>
     <h1 id="storeName">PedidoFlow Lanches</h1>
-    <p>Escolha seus produtos, informe os dados da entrega e envie o pedido organizado para o WhatsApp.</p>
+    <p id="storeDescription">Escolha seus produtos, finalize o pedido e envie direto para o WhatsApp.</p>
   </div></div>
-  <div class="hero-card"><strong>Pedido rápido e organizado</strong><p>Cadastre-se uma vez e seus dados ficam salvos para os próximos pedidos.</p></div>
+  <div class="hero-card"><strong>Pedido rápido e organizado</strong><p>Cardápio online, checkout completo e atendimento direto pelo WhatsApp.</p></div>
 </div></section>
 
 <main class="container">
@@ -30,42 +30,32 @@
 <button class="floating-cart" onclick="openCart()">🛒 Ver carrinho <span class="count" id="cartCount">0</span></button>
 
 <dialog id="cartDialog"><div class="modal">
-  <div class="row"><h2>Finalizar pedido</h2><button class="btn btn-light" onclick="cartDialog.close()">✕</button></div>
+  <div class="row"><h2>Seu pedido</h2><button class="btn btn-light" onclick="cartDialog.close()">✕</button></div>
   <div id="cartItems"></div>
-
   <div class="totals">
     <div class="line"><span>Subtotal</span><strong id="subtotal">R$ 0,00</strong></div>
     <div class="line"><span>Entrega</span><strong id="deliveryFee">R$ 0,00</strong></div>
     <div class="line grand"><span>Total</span><span id="total">R$ 0,00</span></div>
   </div>
-
   <div class="checkout">
-    <div class="field"><label>Nome *</label><input id="customerName" maxlength="80" placeholder="Seu nome"><div id="nameError" class="error-text"></div></div>
-    <div class="field"><label>WhatsApp *</label><input id="customerPhone" inputmode="numeric" maxlength="15" placeholder="(73) 99999-9999"><div id="phoneError" class="error-text"></div></div>
-    <div class="field"><label>Recebimento *</label><select id="deliveryType"><option>Entrega</option><option>Retirada</option></select></div>
-    <div class="field"><label>Pagamento *</label><select id="payment"><option>Pix</option><option>Dinheiro</option><option>Cartão na entrega</option></select></div>
-
-    <div id="deliveryFields" class="full checkout" style="margin-top:0">
-      <div class="field full"><label>Rua/avenida *</label><input id="address" placeholder="Ex.: Rua das Flores"><div id="addressError" class="error-text"></div></div>
-      <div class="field"><label>Número *</label><input id="addressNumber" inputmode="numeric" maxlength="8" placeholder="123"><div id="numberError" class="error-text"></div></div>
-      <div class="field"><label>Bairro *</label><input id="neighborhood" placeholder="Centro"><div id="neighborhoodError" class="error-text"></div></div>
-      <div class="field full"><label>Ponto de referência</label><input id="reference" placeholder="Próximo à praça..."></div>
-    </div>
-
-    <div id="changeField" class="field full hidden"><label>Troco para quanto?</label><input id="changeFor" inputmode="decimal" placeholder="Ex.: 100,00"><div id="changeError" class="error-text"></div></div>
-    <div class="field full"><label>Observações gerais</label><textarea id="generalNotes" placeholder="Ex.: retirar cebola, tocar interfone..."></textarea></div>
+    <input id="customerName" placeholder="Seu nome">
+    <input id="customerPhone" placeholder="Seu telefone">
+    <select id="deliveryType"><option>Entrega</option><option>Retirada</option></select>
+    <select id="payment"><option>Pix</option><option>Dinheiro</option><option>Cartão na entrega</option></select>
+    <input class="full" id="address" placeholder="Endereço completo">
+    <input id="neighborhood" placeholder="Bairro">
+    <input id="reference" placeholder="Ponto de referência">
+    <textarea class="full" id="generalNotes" placeholder="Observações gerais"></textarea>
   </div>
-
   <button class="btn btn-success full" style="width:100%;margin-top:14px" onclick="sendOrder()">Enviar pedido pelo WhatsApp</button>
 </div></dialog>
 
 <footer><a href="dono.html">Acesso administrativo</a></footer>
 
 <script>
-const db=supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
-let products=[],settings={nome_loja:'PedidoFlow Lanches',whatsapp:'5573999999999',taxa_entrega:5,endereco:'Jequié - BA',chave_pix:'',loja_aberta:true},cart=[],activeCategory='Todos';
+const db = supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
+let products=[], settings={nome_loja:'PedidoFlow Lanches',whatsapp:'5573999999999',taxa_entrega:5,endereco:'Jequié - BA',chave_pix:'',loja_aberta:true}, cart=[], activeCategory='Todos';
 const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const digits=v=>String(v||'').replace(/\D/g,'');
 
 async function loadData(){
   const [pRes,sRes]=await Promise.all([
@@ -73,40 +63,30 @@ async function loadData(){
     db.from('configuracoes').select('*').order('id').limit(1)
   ]);
   products=pRes.data||[];
-  if(sRes.data?.length)settings=sRes.data[0];
-  renderHeader();renderCategories();renderProducts();renderAccount();restoreCustomer();
+  if(sRes.data?.length) settings=sRes.data[0];
+  renderHeader(); renderCategories(); renderProducts(); renderAccount();
 }
+
 async function renderAccount(){
-  const token=localStorage.getItem('pf_cliente_token');
-  if(!token){accountLink.textContent='Entrar';accountLink.href='login.html';return}
-  const {data,error}=await db.rpc('obter_cliente_sessao',{p_token:token});
-  if(error||!data){
-    localStorage.removeItem('pf_cliente_token');
-    localStorage.removeItem('pf_cliente');
-    accountLink.textContent='Entrar';
-    accountLink.href='login.html';
-    return;
-  }
-  localStorage.setItem('pf_cliente',JSON.stringify(data));
-  accountLink.textContent=`Olá, ${(data.nome||'Cliente').split(' ')[0]}`;
-  accountLink.href='conta.html';
-  customerName.value=data.nome||'';
-  customerPhone.value=maskPhone(data.whatsapp||'');
-  address.value=data.endereco||'';
-  addressNumber.value=data.numero||'';
-  neighborhood.value=data.bairro||'';
-  reference.value=data.referencia||'';
+  const {data:{session}}=await db.auth.getSession();
+  if(!session){accountLink.textContent='Entrar (opcional)';return;}
+  const {data:profile}=await db.from('perfis').select('nome,role').eq('id',session.user.id).single();
+  accountLink.textContent=profile?.nome?`Olá, ${profile.nome.split(' ')[0]}`:'Minha conta';
+  accountLink.href=profile?.role==='dono'?'admin.html':'conta.html';
 }
+
 function renderHeader(){
   storeName.textContent=settings.nome_loja||'PedidoFlow Lanches';
   storeAddress.textContent=settings.endereco||'';
   storeStatus.textContent=settings.loja_aberta?'Loja aberta':'Loja fechada';
 }
+
 function renderCategories(){
   const cats=['Todos',...new Set(products.map(p=>p.categoria||'Outros'))];
   categories.innerHTML=cats.map(c=>`<button class="chip ${c===activeCategory?'active':''}" onclick="setCategory('${c.replaceAll("'","\'")}')">${c}</button>`).join('');
 }
 function setCategory(c){activeCategory=c;renderCategories();renderProducts()}
+
 function renderProducts(){
   const q=search.value.toLowerCase().trim();
   const filtered=products.filter(p=>(activeCategory==='Todos'||p.categoria===activeCategory)&&((p.nome||'').toLowerCase().includes(q)||(p.descricao||'').toLowerCase().includes(q)));
@@ -115,125 +95,61 @@ function renderProducts(){
   <article class="product-card">
     ${i<2?'<span class="badge">Mais pedido</span>':''}
     <img src="${p.imagem_url||'https://via.placeholder.com/800x500?text=Produto'}" onerror="this.src='https://via.placeholder.com/800x500?text=Produto'">
-    <div class="product-body"><div class="category-label">${p.categoria||'Outros'}</div><h3>${p.nome}</h3>
-    <div class="description">${p.descricao||''}</div>
-    <div class="price-row"><div class="price">${money(p.preco)}</div><button class="btn btn-primary" onclick="addToCart(${p.id})">Adicionar</button></div></div>
+    <div class="product-body">
+      <div class="category-label">${p.categoria||'Outros'}</div>
+      <h3>${p.nome}</h3><div class="description">${p.descricao||''}</div>
+      <div class="price-row"><div class="price">${money(p.preco)}</div><button class="btn btn-primary" onclick="addToCart(${p.id})">Adicionar</button></div>
+    </div>
   </article>`).join(''):'<div class="empty">Nenhum produto encontrado.</div>';
 }
-function saveCart(){localStorage.setItem('pf_cart',JSON.stringify(cart))}
-function restoreCart(){try{cart=JSON.parse(localStorage.getItem('pf_cart')||'[]')||[]}catch{cart=[]}updateCartCount()}
-function addToCart(id){const p=products.find(x=>x.id===id),f=cart.find(x=>x.id===id);if(f)f.qty++;else cart.push({...p,qty:1,note:''});saveCart();updateCartCount()}
-function updateCartCount(){cartCount.textContent=cart.reduce((a,b)=>a+b.qty,0)}
+
+function addToCart(id){
+  const p=products.find(x=>x.id===id), found=cart.find(x=>x.id===id);
+  if(found)found.qty++; else cart.push({...p,qty:1,note:''});
+  cartCount.textContent=cart.reduce((a,b)=>a+b.qty,0);
+}
 function openCart(){renderCart();cartDialog.showModal()}
 function renderCart(){
   cartItems.innerHTML=cart.length?cart.map(i=>`
   <div class="cart-item"><div><strong>${i.nome}</strong><div class="muted">${money(i.preco)} cada</div>
   <input class="item-note" value="${i.note||''}" placeholder="Ex.: sem cebola" oninput="setNote(${i.id},this.value)"></div>
   <div class="qty"><button onclick="changeQty(${i.id},-1)">−</button><strong>${i.qty}</strong><button onclick="changeQty(${i.id},1)">+</button></div></div>`).join(''):'<div class="empty">Seu carrinho está vazio.</div>';
-  const sub=cart.reduce((s,i)=>s+Number(i.preco)*i.qty,0),fee=deliveryType.value==='Entrega'?Number(settings.taxa_entrega||0):0;
+  const sub=cart.reduce((s,i)=>s+Number(i.preco)*i.qty,0), fee=deliveryType.value==='Entrega'?Number(settings.taxa_entrega||0):0;
   subtotal.textContent=money(sub);deliveryFee.textContent=money(fee);total.textContent=money(sub+fee);
 }
-function changeQty(id,d){const i=cart.find(x=>x.id===id);if(!i)return;i.qty+=d;if(i.qty<=0)cart=cart.filter(x=>x.id!==id);saveCart();updateCartCount();renderCart()}
-function setNote(id,n){const i=cart.find(x=>x.id===id);if(i){i.note=n;saveCart()}}
+function changeQty(id,d){const i=cart.find(x=>x.id===id);if(!i)return;i.qty+=d;if(i.qty<=0)cart=cart.filter(x=>x.id!==id);cartCount.textContent=cart.reduce((a,b)=>a+b.qty,0);renderCart()}
+function setNote(id,n){const i=cart.find(x=>x.id===id);if(i)i.note=n}
+deliveryType.addEventListener('change',renderCart);
 
-function maskPhone(value){
-  let d=digits(value).slice(0,11);
-  if(d.length<=2)return d;
-  if(d.length<=6)return `(${d.slice(0,2)}) ${d.slice(2)}`;
-  if(d.length<=10)return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
-  return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
-}
-customerPhone.addEventListener('input',e=>{e.target.value=maskPhone(e.target.value)});
-addressNumber.addEventListener('input',e=>{e.target.value=digits(e.target.value)});
-changeFor.addEventListener('input',e=>{e.target.value=e.target.value.replace(/[^0-9,\.]/g,'')});
-
-deliveryType.addEventListener('change',()=>{
-  deliveryFields.classList.toggle('hidden',deliveryType.value==='Retirada');
-  renderCart();clearErrors();
-});
-payment.addEventListener('change',()=>{changeField.classList.toggle('hidden',payment.value!=='Dinheiro');clearErrors()});
-
-function clearErrors(){
-  document.querySelectorAll('.invalid').forEach(el=>el.classList.remove('invalid'));
-  document.querySelectorAll('.error-text').forEach(el=>el.textContent='');
-}
-function setError(input,errorEl,message){input.classList.add('invalid');errorEl.textContent=message}
-function validateCheckout(){
-  clearErrors();let valid=true;
-  const nome=customerName.value.trim(),phone=digits(customerPhone.value);
-  if(nome.length<3||!/^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s.'-]+$/.test(nome)){setError(customerName,nameError,'Informe um nome válido.');valid=false}
-  if(phone.length<10||phone.length>11){setError(customerPhone,phoneError,'Informe um WhatsApp válido com DDD.');valid=false}
-  if(deliveryType.value==='Entrega'){
-    if(address.value.trim().length<4){setError(address,addressError,'Informe a rua ou avenida.');valid=false}
-    if(!/^\d+$/.test(addressNumber.value.trim())){setError(addressNumber,numberError,'Informe apenas números.');valid=false}
-    if(neighborhood.value.trim().length<2){setError(neighborhood,neighborhoodError,'Informe o bairro.');valid=false}
-  }
-  if(payment.value==='Dinheiro'&&changeFor.value.trim()){
-    const c=Number(changeFor.value.replace(',','.')),totalValue=cart.reduce((s,i)=>s+Number(i.preco)*i.qty,0)+(deliveryType.value==='Entrega'?Number(settings.taxa_entrega||0):0);
-    if(!c||c<totalValue){setError(changeFor,changeError,'O valor do troco deve ser maior ou igual ao total.');valid=false}
-  }
-  return valid;
-}
-function saveCustomer(){
-  localStorage.setItem('pf_customer',JSON.stringify({name:customerName.value.trim(),phone:customerPhone.value,address:address.value.trim(),number:addressNumber.value.trim(),neighborhood:neighborhood.value.trim(),reference:reference.value.trim()}))
-}
-function restoreCustomer(){
-  try{const d=JSON.parse(localStorage.getItem('pf_customer')||'null');if(!d)return;customerName.value=d.name||'';customerPhone.value=d.phone||'';address.value=d.address||'';addressNumber.value=d.number||'';neighborhood.value=d.neighborhood||'';reference.value=d.reference||''}catch{}
-}
 async function saveOrder(orderNumber,sub,fee){
-  const token=localStorage.getItem('pf_cliente_token');
-  if(!token)throw new Error('Faça login para continuar.');
-  const {data,error}=await db.rpc('registrar_pedido_cliente',{
-    p_token:token,
-    p_numero:orderNumber,
-    p_cliente_nome:customerName.value.trim(),
-    p_cliente_telefone:customerPhone.value.trim(),
-    p_tipo_entrega:deliveryType.value,
-    p_endereco:deliveryType.value==='Entrega'?`${address.value.trim()}, ${addressNumber.value.trim()}`:'',
-    p_bairro:deliveryType.value==='Entrega'?neighborhood.value.trim():'',
-    p_referencia:deliveryType.value==='Entrega'?reference.value.trim():'',
-    p_pagamento:payment.value,
-    p_observacoes:[generalNotes.value.trim(),payment.value==='Dinheiro'&&changeFor.value.trim()?`Troco para R$ ${changeFor.value}`:''].filter(Boolean).join(' | '),
-    p_subtotal:sub,
-    p_taxa_entrega:fee,
-    p_total:sub+fee,
-    p_itens:cart.map(i=>({produto_id:i.id,nome:i.nome,quantidade:i.qty,preco_unitario:Number(i.preco),observacao:i.note||''}))
-  });
-  if(error)throw error;
-  return data;
+  const {data:{user}}=await db.auth.getUser();
+  const payload={
+    numero:orderNumber,cliente_id:user?.id||null,cliente_nome:customerName.value.trim(),cliente_telefone:customerPhone.value.trim(),
+    tipo_entrega:deliveryType.value,endereco:deliveryType.value==='Entrega'?address.value.trim():'',bairro:deliveryType.value==='Entrega'?neighborhood.value.trim():'',
+    referencia:deliveryType.value==='Entrega'?reference.value.trim():'',pagamento:payment.value,observacoes:generalNotes.value.trim(),
+    subtotal:sub,taxa_entrega:fee,total:sub+fee,status:'Recebido',
+    itens:cart.map(i=>({produto_id:i.id,nome:i.nome,quantidade:i.qty,preco_unitario:Number(i.preco),observacao:i.note||''}))
+  };
+  const {error}=await db.from('pedidos').insert(payload); if(error)throw error;
 }
+
 async function sendOrder(){
-  if(!cart.length)return alert('Adicione pelo menos um produto.');
-  const token=localStorage.getItem('pf_cliente_token');
-  if(!token){
-    sessionStorage.setItem('pf_return_after_login','index.html');
-    location.href='login.html';
-    return;
-  }
-  if(!settings.loja_aberta)return alert('A loja está fechada no momento.');
-  if(!validateCheckout())return;
-  saveCustomer();
+  if(!cart.length)return alert('Adicione produtos.');
+  if(!customerName.value.trim())return alert('Informe seu nome.');
+  if(deliveryType.value==='Entrega'&&!address.value.trim())return alert('Informe o endereço.');
+  if(!settings.loja_aberta)return alert('A loja está fechada.');
   const sub=cart.reduce((s,i)=>s+Number(i.preco)*i.qty,0),fee=deliveryType.value==='Entrega'?Number(settings.taxa_entrega||0):0,order=Math.floor(1000+Math.random()*9000);
-  try{
-    await saveOrder(order,sub,fee);
-  }catch(e){
-    console.error(e);
-    alert('Não foi possível registrar o pedido no painel. Tente novamente. Detalhe: ' + (e.message || 'erro desconhecido'));
-    return;
-  }
-  let text=`*NOVO PEDIDO #${order}*\n\n*Cliente:* ${customerName.value.trim()}\n*Telefone:* ${customerPhone.value}\n*Tipo:* ${deliveryType.value}\n`;
-  if(deliveryType.value==='Entrega')text+=`*Endereço:* ${address.value.trim()}, ${addressNumber.value.trim()}\n*Bairro:* ${neighborhood.value.trim()}\n*Referência:* ${reference.value.trim()||'Não informada'}\n`;
-  text+=`*Pagamento:* ${payment.value}`;
-  if(payment.value==='Dinheiro'&&changeFor.value.trim())text+=`\n*Troco para:* R$ ${changeFor.value}`;
-  text+='\n\n*ITENS:*\n';
+  try{await saveOrder(order,sub,fee)}catch(e){if(!confirm('Não foi possível salvar no painel. Enviar mesmo assim pelo WhatsApp?'))return}
+  let text=`*NOVO PEDIDO #${order}*\n\n*Cliente:* ${customerName.value}\n*Telefone:* ${customerPhone.value}\n*Tipo:* ${deliveryType.value}\n`;
+  if(deliveryType.value==='Entrega')text+=`*Endereço:* ${address.value}\n*Bairro:* ${neighborhood.value}\n*Referência:* ${reference.value}\n`;
+  text+=`*Pagamento:* ${payment.value}\n\n*ITENS:*\n`;
   cart.forEach(i=>{text+=`${i.qty}x ${i.nome} - ${money(Number(i.preco)*i.qty)}${i.note?` (${i.note})`:''}\n`});
   text+=`\n*Subtotal:* ${money(sub)}\n*Entrega:* ${money(fee)}\n*TOTAL:* ${money(sub+fee)}`;
-  if(generalNotes.value.trim())text+=`\n\n*Observações:* ${generalNotes.value.trim()}`;
+  if(generalNotes.value)text+=`\n\n*Observações:* ${generalNotes.value}`;
   if(payment.value==='Pix'&&settings.chave_pix)text+=`\n*Chave Pix:* ${settings.chave_pix}`;
-  let phone=digits(settings.whatsapp);if(!phone.startsWith('55'))phone='55'+phone;
-  if(phone.length<12)return alert('WhatsApp da loja inválido. Configure no painel do dono.');
-  localStorage.removeItem('pf_cart');cart=[];updateCartCount();window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`,'_blank');
+  let phone=String(settings.whatsapp||'').replace(/\D/g,''); if(!phone.startsWith('55'))phone='55'+phone;
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`,'_blank');
 }
-search.addEventListener('input',renderProducts);restoreCart();loadData();
+search.addEventListener('input',renderProducts);loadData();
 </script>
 </body></html>
