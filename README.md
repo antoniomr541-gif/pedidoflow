@@ -33,3 +33,8 @@ O dono continua entrando em `dono.html` com a conta do Supabase Authentication.
 5. Volte ao cardápio.
 6. Finalize o pedido.
 7. Confira em Painel do dono > Pedidos.
+
+
+## Atualização
+- Termos obrigatórios no cadastro.
+- Promoções destacadas e marcadas por padrão, mas opcionais.
