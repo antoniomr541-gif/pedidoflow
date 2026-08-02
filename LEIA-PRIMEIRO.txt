@@ -1,1 +1,18 @@
-Substitua admin.html e styles.css na raiz do GitHub do PedidoFlow. Faça o commit e aguarde a Vercel publicar. No celular, o menu ficará escondido no botão ☰ e os cards ficarão um abaixo do outro.
+PEDIDOFLOW 3.4 — PEDIDOS MOBILE + AVISO DE STATUS
+
+Substitua na raiz do GitHub:
+- admin.html
+- styles.css
+
+Adicione dentro da pasta api:
+- notificar-status.mjs
+
+Depois do deploy, crie no Meta um template aprovado chamado pedido_status, idioma Português (Brasil), com o texto:
+"Olá! O pedido #{{1}} teve o status atualizado para: {{2}}."
+
+Na Vercel, adicione:
+WHATSAPP_STATUS_TEMPLATE_NAME = pedido_status
+WHATSAPP_STATUS_TEMPLATE_LANGUAGE = pt_BR
+
+Faça um Redeploy. A partir daí, toda alteração de status tentará avisar o cliente automaticamente.
+Enquanto usar o número fictício da Meta, apenas destinatários autorizados na lista de teste receberão.

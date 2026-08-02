@@ -1,0 +1,332 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel | PedidoFlow</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
+<body><header class="mobile-admin-header"><div class="mobile-brand">Pedido<span>Flow</span></div><button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" onclick="toggleAdminMenu()">☰</button></header><div class="sidebar-overlay" onclick="closeAdminMenu()"></div><div class="admin-layout"><aside class="sidebar" id="adminSidebar"><div class="sidebar-mobile-top"><h1>PedidoFlow</h1><button class="menu-close" type="button" aria-label="Fechar menu" onclick="closeAdminMenu()">×</button></div><nav>
+<button class="active" onclick="showSection('dashboard',this)">Dashboard</button>
+<button onclick="showSection('orders',this)">Pedidos <span id="pendingBadge"></span></button>
+<button onclick="showSection('products',this)">Produtos</button>
+<button onclick="showSection('clients',this)">Clientes</button>
+<button onclick="showSection('promotions',this)">Promoções</button>
+<button onclick="showSection('settings',this)">Configurações</button>
+</nav><div style="margin-top:24px"><a href="index.html">Ver cardápio</a><br><br><button onclick="logout()">Sair</button></div></aside>
+
+<main class="admin-main">
+<section id="dashboard" class="section">
+  <div class="row"><div><div class="muted">Painel administrativo</div><h1>Visão geral</h1></div><button class="btn btn-light" onclick="refreshAll()">Atualizar</button></div>
+  <div class="stats"><div class="stat"><div class="muted">Pedidos hoje</div><strong id="ordersToday">0</strong></div><div class="stat"><div class="muted">Faturamento hoje</div><strong id="revenueToday">R$ 0,00</strong></div><div class="stat"><div class="muted">Produtos ativos</div><strong id="activeProducts">0</strong></div><div class="stat"><div class="muted">Pedidos pendentes</div><strong id="pendingOrders">0</strong></div></div>
+  <div class="card"><h3>Últimos pedidos</h3><div id="dashboardOrders"></div></div>
+</section>
+
+<section id="orders" class="section hidden"><div class="card">
+  <div class="row"><div><h2>Pedidos</h2><p class="muted">Receba, consulte os dados e altere o status.</p></div><button class="btn btn-light" onclick="loadOrders()">Atualizar pedidos</button></div>
+  <div id="ordersList"></div>
+</div></section>
+
+<section id="products" class="section hidden">
+<div class="card"><h2>Novo produto</h2><div class="form-grid">
+<input id="productName" placeholder="Nome"><input id="productPrice" placeholder="Preço: 18,90"><input id="productCategory" placeholder="Categoria">
+<input id="productImageUrl" placeholder="URL da imagem"><input id="productImageFile" type="file" accept="image/*"><select id="productActive"><option value="true">Ativo</option><option value="false">Oculto</option></select>
+<textarea id="productDescription" class="full" placeholder="Descrição"></textarea></div><button class="btn btn-primary" style="margin-top:12px" onclick="addProduct()">Cadastrar produto</button></div>
+<div class="card"><h2>Produtos cadastrados</h2><div id="productsList" class="table-list"></div></div></section>
+
+<section id="clients" class="section hidden"><div class="card"><h2>Clientes cadastrados</h2><div id="clientsList" class="table-list"></div></div></section>
+
+<section id="promotions" class="section hidden">
+<div class="card campaign-shell">
+  <div class="row campaign-heading">
+    <div><div class="muted">Central de campanhas</div><h2>Promoções com imagem</h2><p class="muted">Envie banners dos combos para os clientes que autorizaram promoções.</p></div>
+    <span class="status-pill" id="whatsappApiStatus">API não configurada</span>
+  </div>
+
+  <div class="notice">O envio automático usa a API oficial do WhatsApp. Enquanto as credenciais não estiverem configuradas, você ainda pode baixar a imagem e copiar a legenda.</div>
+
+  <div class="campaign-layout">
+    <div class="campaign-form">
+      <label class="field-label" for="campaignTitle">Nome interno da campanha</label>
+      <input id="campaignTitle" class="field-control" placeholder="Ex.: Combo de domingo">
+
+      <label class="field-label" for="campaignImageFile">Banner da promoção</label>
+      <label class="upload-zone" for="campaignImageFile">
+        <input id="campaignImageFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewCampaignImage(this.files[0])">
+        <strong>Adicionar imagem</strong><span>JPG, PNG ou WEBP — recomendado 1080 × 1080</span>
+      </label>
+      <input id="campaignImageUrl" class="field-control" placeholder="Ou cole a URL pública da imagem" oninput="previewCampaignUrl(this.value)">
+
+      <label class="field-label" for="promotionMessage">Legenda da promoção</label>
+      <textarea id="promotionMessage" class="field-control campaign-text" maxlength="700" oninput="updateCampaignPreview()" placeholder="Ex.: Hoje tem Combo Família: 2 hambúrgueres, batata e refrigerante por R$ 49,90."></textarea>
+      <div class="row"><span class="muted">A legenda será enviada junto ao banner.</span><span class="muted"><b id="campaignChars">0</b>/700</span></div>
+
+      <label class="field-label" for="campaignLink">Link do botão “Pedir agora”</label>
+      <input id="campaignLink" class="field-control" placeholder="https://seusite.com/" oninput="updateCampaignPreview()">
+
+      <div class="campaign-audience">
+        <div><strong>Público</strong><div class="muted">Somente clientes que aceitaram promoções</div></div>
+        <strong id="consentedCount">0 clientes</strong>
+      </div>
+
+      <div class="campaign-actions">
+        <button id="sendCampaignButton" class="btn btn-success btn-large" onclick="sendAutomaticCampaign()">Enviar campanha automaticamente</button>
+        <button class="btn btn-light" onclick="copyPromotionMessage()">Copiar legenda</button>
+        <button class="btn btn-light" onclick="downloadCampaignImage()">Baixar imagem</button>
+        <button class="btn btn-light" onclick="exportPromotionCSV()">Exportar clientes</button>
+      </div>
+      <div id="campaignProgressWrap" class="campaign-progress hidden"><div id="campaignProgressBar"></div></div>
+      <p id="promotionProgress" class="muted"></p>
+    </div>
+
+    <aside class="phone-preview" aria-label="Prévia da mensagem">
+      <div class="phone-top">Prévia no WhatsApp</div>
+      <div class="whatsapp-bg">
+        <div class="message-bubble">
+          <div id="campaignImagePreview" class="campaign-image-placeholder"><span>Seu banner aparecerá aqui</span></div>
+          <div class="message-content">
+            <strong id="campaignPreviewTitle">Promoção especial</strong>
+            <p id="campaignPreviewText">Adicione uma imagem e escreva uma legenda curta.</p>
+            <small id="campaignPreviewTime">12:00 ✓✓</small>
+          </div>
+          <div id="campaignPreviewButton" class="message-cta">🔗 Pedir agora</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="card">
+  <div class="row"><div><h2>Clientes autorizados</h2><p class="muted">Estes contatos podem receber as campanhas.</p></div></div>
+  <div id="promotionCustomers" class="customer-grid"></div>
+</div>
+
+<div class="card">
+  <div class="row"><div><h2>Histórico de campanhas</h2><p class="muted">Acompanhe envios e falhas.</p></div><button class="btn btn-light" onclick="loadCampaignHistory()">Atualizar</button></div>
+  <div id="campaignHistory" class="table-list"><p class="muted">Nenhuma campanha enviada.</p></div>
+</div>
+</section>
+
+<section id="settings" class="section hidden"><div class="card"><h2>Configurações da loja</h2><div class="form-grid">
+<input id="storeNameInput" placeholder="Nome da loja"><input id="storeWhatsappInput" placeholder="WhatsApp da loja"><input id="deliveryFeeInput" placeholder="Taxa de entrega">
+<input id="storeAddressInput" placeholder="Endereço/cidade"><input id="pixKeyInput" placeholder="Chave Pix"><select id="storeOpenInput"><option value="true">Loja aberta</option><option value="false">Loja fechada</option></select>
+</div><button class="btn btn-primary" style="margin-top:12px" onclick="saveSettings()">Salvar configurações</button></div></section>
+</main></div>
+
+<dialog id="editDialog"><div class="modal"><h3>Editar produto</h3><div class="form-grid">
+<input id="editName"><input id="editPrice"><input id="editCategory"><input id="editImage"><textarea id="editDescription" class="full"></textarea><select id="editActive"><option value="true">Ativo</option><option value="false">Oculto</option></select>
+</div><div class="row" style="margin-top:12px"><button class="btn btn-primary" onclick="saveEdit()">Salvar</button><button class="btn btn-light" onclick="editDialog.close()">Cancelar</button></div></div></dialog>
+
+<script>
+const db=supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
+let products=[],orders=[],clients=[],settingsId=null,editingId=null,promotionClients=[],campaignImageFile=null,campaignImagePublicUrl='';
+const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const digits=v=>String(v||'').replace(/\D/g,'');
+
+function toggleAdminMenu(){const sidebar=document.getElementById('adminSidebar');const button=document.querySelector('.menu-toggle');const open=!sidebar.classList.contains('open');sidebar.classList.toggle('open',open);document.body.classList.toggle('menu-open',open);if(button)button.setAttribute('aria-expanded',String(open));}
+function closeAdminMenu(){const sidebar=document.getElementById('adminSidebar');const button=document.querySelector('.menu-toggle');if(sidebar)sidebar.classList.remove('open');document.body.classList.remove('menu-open');if(button)button.setAttribute('aria-expanded','false');}
+function showSection(id,btn){document.querySelectorAll('.section').forEach(s=>s.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.sidebar nav button').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');closeAdminMenu()}
+async function requireOwner(){const {data:{user}}=await db.auth.getUser();if(!user){location.href='dono.html';return false}const {data:p}=await db.from('perfis').select('role').eq('id',user.id).single();if(p?.role!=='dono'){await db.auth.signOut();location.href='dono.html';return false}return true}
+async function logout(){await db.auth.signOut();location.href='dono.html'}
+async function init(){if(!await requireOwner())return;await refreshAll();subscribeOrders()}
+async function refreshAll(){await Promise.all([loadProducts(),loadOrders(),loadClients(),loadSettings(),loadCampaignHistory()]);checkWhatsAppApi()}
+
+async function loadOrders(){
+ const {data,error}=await db.from('pedidos').select('*').order('criado_em',{ascending:false}).limit(100);
+ if(error){ordersList.innerHTML=`<div class="notice">Erro ao carregar pedidos: ${error.message}</div>`;dashboardOrders.innerHTML=ordersList.innerHTML;return}
+ orders=data||[];
+ const today=new Date();today.setHours(0,0,0,0);const todays=orders.filter(p=>new Date(p.criado_em)>=today);
+ const pending=orders.filter(p=>['Recebido','Preparando'].includes(p.status));
+ ordersToday.textContent=todays.length;revenueToday.textContent=money(todays.filter(p=>p.status!=='Cancelado').reduce((s,p)=>s+Number(p.total||0),0));
+ pendingOrders.textContent=pending.length;pendingBadge.textContent=pending.length?`(${pending.length})`:''; 
+ ordersList.innerHTML=orders.length?orders.map(renderOrderCard).join(''):'<p class="muted">Nenhum pedido recebido ainda.</p>';
+ dashboardOrders.innerHTML=orders.slice(0,5).length?orders.slice(0,5).map(p=>`<div class="list-item"><div class="row"><strong>#${p.numero} · ${p.cliente_nome}</strong><span class="status-pill">${p.status}</span></div><div class="muted">${money(p.total)} · ${new Date(p.criado_em).toLocaleString('pt-BR')}</div></div>`).join(''):'<p class="muted">Nenhum pedido.</p>';
+}
+function renderOrderCard(p){
+ const phone=digits(p.cliente_telefone);const whatsapp=phone.startsWith('55')?phone:'55'+phone;
+ const addressText=p.tipo_entrega==='Entrega'?`${p.endereco||''} · ${p.bairro||''}${p.referencia?` · Ref.: ${p.referencia}`:''}`:'Retirada no local';
+ return `<div class="order-card">
+   <div class="row"><div><strong>Pedido #${p.numero}</strong><div class="muted">${new Date(p.criado_em).toLocaleString('pt-BR')}</div></div>
+   <select class="order-status-select" data-current="${p.status}" onchange="updateOrderStatus(${p.id},this)">${['Recebido','Preparando','Saiu para entrega','Finalizado','Cancelado'].map(s=>`<option ${s===p.status?'selected':''}>${s}</option>`).join('')}</select></div>
+   <div class="order-grid">
+     <div class="order-detail"><strong>Cliente</strong><div>${p.cliente_nome}</div><div>${p.cliente_telefone||'Sem telefone'}</div><div>${addressText}</div></div>
+     <div class="order-detail"><strong>Pagamento</strong><div>${p.pagamento||'-'}</div><div>Total: ${money(p.total)}</div><div>${p.observacoes||'Sem observações'}</div></div>
+   </div>
+   <div class="order-detail" style="margin-top:12px"><strong>Itens</strong><div>${(p.itens||[]).map(i=>`${i.quantidade}x ${i.nome}${i.observacao?` (${i.observacao})`:''}`).join('<br>')}</div></div>
+   <div class="order-actions">
+     ${phone?`<a class="btn btn-success" target="_blank" href="https://wa.me/${whatsapp}">WhatsApp do cliente</a>`:''}
+     <button class="btn btn-light" onclick="copyOrder(${p.id})">Copiar pedido</button>
+   </div>
+ </div>`;
+}
+async function updateOrderStatus(id,select){
+ const status=select.value,previous=select.dataset.current||'';
+ const pedido=orders.find(p=>p.id===id);
+ select.disabled=true;
+ const {error}=await db.from('pedidos').update({status}).eq('id',id);
+ if(error){select.value=previous;select.disabled=false;return alert(error.message)}
+ select.dataset.current=status;
+ let aviso='';
+ try{
+   const {data:{session}}=await db.auth.getSession();
+   if(!session)throw new Error('Sessão expirada.');
+   const response=await fetch('/api/notificar-status',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({pedido:{id:pedido?.id,numero:pedido?.numero,cliente_nome:pedido?.cliente_nome,cliente_telefone:pedido?.cliente_telefone,status}})});
+   const result=await response.json();
+   if(!response.ok)throw new Error(result.error||'Não foi possível avisar o cliente.');
+   aviso=result.sent?'Cliente avisado pelo WhatsApp.':'';
+ }catch(e){aviso=`Status atualizado, mas o aviso não foi enviado: ${e.message}`}
+ await loadOrders();
+ if(aviso)alert(aviso);
+}
+async function copyOrder(id){const p=orders.find(o=>o.id===id);if(!p)return;const t=`Pedido #${p.numero}\nCliente: ${p.cliente_nome}\nTelefone: ${p.cliente_telefone}\nItens:\n${(p.itens||[]).map(i=>`${i.quantidade}x ${i.nome}`).join('\n')}\nTotal: ${money(p.total)}`;await navigator.clipboard.writeText(t);alert('Pedido copiado.')}
+function subscribeOrders(){db.channel('pedidos-v3').on('postgres_changes',{event:'INSERT',schema:'public',table:'pedidos'},()=>{loadOrders();try{new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=').play()}catch{}}).subscribe()}
+
+async function loadProducts(){
+ const {data,error}=await db.from('produtos').select('*').order('id');if(error)return;products=data||[];activeProducts.textContent=products.filter(p=>p.ativo).length;
+ productsList.innerHTML=products.length?products.map(p=>`<div class="list-item"><div class="row"><div class="row"><img src="${p.imagem_url||'https://via.placeholder.com/200?text=Produto'}"><div><strong>${p.nome}</strong><div class="muted">${p.categoria} · ${money(p.preco)} · ${p.ativo?'Ativo':'Oculto'}</div></div></div><div class="row"><button class="btn btn-light" onclick="openEdit(${p.id})">Editar</button><button class="btn btn-light" onclick="toggleProduct(${p.id},${p.ativo})">${p.ativo?'Ocultar':'Ativar'}</button><button class="btn btn-danger" onclick="removeProduct(${p.id})">Excluir</button></div></div></div>`).join(''):'<p class="muted">Nenhum produto.</p>';
+}
+async function uploadImage(file){if(!file)return'';const ext=file.name.split('.').pop(),path=`${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;const {error}=await db.storage.from('produtos').upload(path,file);if(error)throw error;return db.storage.from('produtos').getPublicUrl(path).data.publicUrl}
+async function addProduct(){const nome=productName.value.trim(),preco=Number(productPrice.value.replace(',','.'));if(!nome||!preco)return alert('Informe nome e preço.');let image=productImageUrl.value.trim();try{if(productImageFile.files[0])image=await uploadImage(productImageFile.files[0])}catch(e){return alert(e.message)}const {error}=await db.from('produtos').insert({nome,preco,categoria:productCategory.value.trim()||'Outros',descricao:productDescription.value.trim(),imagem_url:image,ativo:productActive.value==='true'});if(error)return alert(error.message);productName.value=productPrice.value=productCategory.value=productImageUrl.value=productDescription.value='';productImageFile.value='';await loadProducts()}
+function openEdit(id){const p=products.find(x=>x.id===id);editingId=id;editName.value=p.nome;editPrice.value=p.preco;editCategory.value=p.categoria||'';editImage.value=p.imagem_url||'';editDescription.value=p.descricao||'';editActive.value=String(p.ativo);editDialog.showModal()}
+async function saveEdit(){const {error}=await db.from('produtos').update({nome:editName.value.trim(),preco:Number(editPrice.value.replace(',','.')),categoria:editCategory.value.trim()||'Outros',imagem_url:editImage.value.trim(),descricao:editDescription.value.trim(),ativo:editActive.value==='true'}).eq('id',editingId);if(error)return alert(error.message);editDialog.close();await loadProducts()}
+async function toggleProduct(id,active){await db.from('produtos').update({ativo:!active}).eq('id',id);await loadProducts()}
+async function removeProduct(id){if(!confirm('Excluir produto?'))return;await db.from('produtos').delete().eq('id',id);await loadProducts()}
+
+async function loadClients(){
+ const {data,error}=await db.from('clientes')
+   .select('id,nome,whatsapp,aceita_promocoes,criado_em')
+   .order('criado_em',{ascending:false});
+ if(error){
+   clientsList.innerHTML=`<p class="muted">Erro ao carregar clientes: ${error.message}</p>`;
+   return;
+ }
+ clients=data||[];
+ clientsList.innerHTML=clients.length?clients.map(c=>`
+   <div class="list-item"><div class="row">
+     <div><strong>${c.nome||'Cliente'}</strong><div class="muted">${c.whatsapp||''}</div></div>
+     <span class="status-pill">${c.aceita_promocoes?'Aceita promoções':'Sem autorização'}</span>
+   </div></div>`).join(''):'<p class="muted">Nenhum cliente cadastrado.</p>';
+ promotionClients=clients.filter(c=>c.aceita_promocoes&&c.whatsapp);
+ consentedCount.textContent=`${promotionClients.length} cliente${promotionClients.length===1?'':'s'}`;
+ promotionCustomers.innerHTML=promotionClients.length?promotionClients.map(c=>`
+   <div class="customer-card"><div class="customer-avatar">${(c.nome||'C').slice(0,1).toUpperCase()}</div><div><strong>${c.nome||'Cliente'}</strong><div class="muted">${c.whatsapp}</div></div><span class="status-pill">Autorizado</span></div>`).join(''):'<p class="muted">Nenhum cliente autorizado.</p>';
+}
+
+function updateCampaignPreview(){
+  const text=promotionMessage.value.trim();
+  campaignChars.textContent=promotionMessage.value.length;
+  campaignPreviewTitle.textContent=campaignTitle.value.trim()||'Promoção especial';
+  campaignPreviewText.textContent=text||'Adicione uma imagem e escreva uma legenda curta.';
+  campaignPreviewButton.style.display=campaignLink.value.trim()?'block':'none';
+}
+
+function previewCampaignImage(file){
+  if(!file)return;
+  if(file.size>5*1024*1024){campaignImageFile.value='';return alert('A imagem deve ter no máximo 5 MB.');}
+  campaignImageFile=file;
+  const url=URL.createObjectURL(file);
+  campaignImagePreview.innerHTML=`<img src="${url}" alt="Prévia do banner">`;
+}
+function previewCampaignUrl(url){
+  campaignImagePublicUrl=url.trim();
+  if(campaignImagePublicUrl)campaignImagePreview.innerHTML=`<img src="${campaignImagePublicUrl}" alt="Prévia do banner" onerror="this.parentElement.innerHTML='<span>Não foi possível carregar a imagem</span>'">`;
+}
+async function uploadCampaignImage(){
+  if(campaignImageFile){
+    const ext=(campaignImageFile.name.split('.').pop()||'jpg').toLowerCase();
+    const path=`campanhas/${new Date().toISOString().slice(0,10)}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const {error}=await db.storage.from('promocoes').upload(path,campaignImageFile,{contentType:campaignImageFile.type,upsert:false});
+    if(error)throw error;
+    campaignImagePublicUrl=db.storage.from('promocoes').getPublicUrl(path).data.publicUrl;
+    campaignImageUrl.value=campaignImagePublicUrl;
+  }
+  if(!campaignImagePublicUrl)campaignImagePublicUrl=campaignImageUrl.value.trim();
+  if(!campaignImagePublicUrl)throw new Error('Adicione o banner da promoção.');
+  return campaignImagePublicUrl;
+}
+function promotionText(){
+  const message=promotionMessage.value.trim();
+  if(!message){alert('Escreva a legenda da promoção.');return null;}
+  return `${message}
+
+Peça agora: ${campaignLink.value.trim()||location.origin+'/'}
+
+Responda SAIR para não receber novas promoções.`;
+}
+async function copyPromotionMessage(){const text=promotionText();if(!text)return;await navigator.clipboard.writeText(text);promotionProgress.textContent='Legenda copiada.';}
+async function downloadCampaignImage(){
+  let url=campaignImagePublicUrl||campaignImageUrl.value.trim();
+  if(campaignImageFile){const a=document.createElement('a');a.href=URL.createObjectURL(campaignImageFile);a.download=campaignImageFile.name||'promocao.jpg';a.click();return;}
+  if(!url)return alert('Adicione uma imagem.');
+  window.open(url,'_blank');
+}
+async function checkWhatsAppApi(){
+  try{const r=await fetch('/api/whatsapp-status');const data=await r.json();whatsappApiStatus.textContent=data.configured?'API configurada':'API não configurada';whatsappApiStatus.classList.toggle('api-ready',!!data.configured)}catch{whatsappApiStatus.textContent='API não configurada'}
+}
+function setCampaignProgress(done,total,text){campaignProgressWrap.classList.remove('hidden');campaignProgressBar.style.width=`${Math.round((done/Math.max(total,1))*100)}%`;promotionProgress.textContent=text;}
+async function sendAutomaticCampaign(){
+  if(!promotionClients.length)return alert('Nenhum cliente autorizou promoções.');
+  const title=campaignTitle.value.trim()||'Campanha sem título';
+  const message=promotionMessage.value.trim();
+  if(!message)return alert('Escreva a legenda da promoção.');
+  const link=campaignLink.value.trim()||location.origin+'/';
+  let imageUrl;try{sendCampaignButton.disabled=true;sendCampaignButton.textContent='Preparando...';imageUrl=await uploadCampaignImage()}catch(e){sendCampaignButton.disabled=false;sendCampaignButton.textContent='Enviar campanha automaticamente';return alert(e.message)}
+  const {data:{session}}=await db.auth.getSession();
+  if(!session){sendCampaignButton.disabled=false;return alert('Sua sessão expirou. Entre novamente.');}
+  const batchSize=20;let sent=0,failed=0;
+  setCampaignProgress(0,promotionClients.length,'Iniciando campanha...');
+  for(let i=0;i<promotionClients.length;i+=batchSize){
+    const recipients=promotionClients.slice(i,i+batchSize).map(c=>({id:c.id,nome:c.nome,whatsapp:c.whatsapp}));
+    try{
+      const response=await fetch('/api/enviar-promocao',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({title,message,imageUrl,link,recipients})});
+      const result=await response.json();if(!response.ok)throw new Error(result.error||'Falha ao enviar campanha.');sent+=result.sent||0;failed+=result.failed||0;(result.results||[]).filter(r=>!r.ok&&r.error).forEach(r=>failureDetails.push(`${r.nome||r.telefone}: ${r.error}`));
+    }catch(e){failed+=recipients.length;promotionProgress.textContent=e.message;}
+    setCampaignProgress(Math.min(i+batchSize,promotionClients.length),promotionClients.length,`Enviadas: ${sent} · Falhas: ${failed}`);
+  }
+  sendCampaignButton.disabled=false;sendCampaignButton.textContent='Enviar campanha automaticamente';
+  await loadCampaignHistory();
+  const uniqueErrors=[...new Set(failureDetails)].slice(0,5);const details=uniqueErrors.length?`\n\nMOTIVOS DAS FALHAS:\n${uniqueErrors.join('\n')}`:'';alert(`Campanha concluída. Enviadas: ${sent}. Falhas: ${failed}.${details}`);
+}
+async function loadCampaignHistory(){
+  if(!document.getElementById('campaignHistory'))return;
+  const {data,error}=await db.from('campanhas').select('*').order('criado_em',{ascending:false}).limit(20);
+  if(error){campaignHistory.innerHTML='<p class="muted">Execute o arquivo atualizar-whatsapp-imagens.sql para ativar o histórico.</p>';return;}
+  campaignHistory.innerHTML=data?.length?data.map(c=>`<div class="list-item campaign-history-item"><img src="${c.imagem_url||''}" alt=""><div><strong>${c.titulo}</strong><div class="muted">${new Date(c.criado_em).toLocaleString('pt-BR')} · ${c.enviados||0} enviados · ${c.falhas||0} falhas</div></div><span class="status-pill">${c.status||'Concluída'}</span></div>`).join(''):'<p class="muted">Nenhuma campanha enviada.</p>';
+}
+
+function escapeCSV(value){
+  const text=String(value??'').replace(/"/g,'""');
+  return `"${text}"`;
+}
+
+function exportPromotionCSV(){
+  if(!promotionClients.length){
+    alert('Nenhum cliente autorizou promoções.');
+    return;
+  }
+
+  const rows=[
+    ['Nome','Telefone','Observação'],
+    ...promotionClients.map(c=>[
+      c.nome||'Cliente',
+      c.whatsapp||'',
+      'Autorizou promoções no PedidoFlow'
+    ])
+  ];
+
+  const csv='\uFEFF'+rows
+    .map(row=>row.map(escapeCSV).join(';'))
+    .join('\n');
+
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;
+  link.download=`clientes-promocoes-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+
+  promotionProgress.textContent=`CSV gerado com ${promotionClients.length} cliente(s).`;
+}
+
+async function loadSettings(){const {data}=await db.from('configuracoes').select('*').order('id').limit(1);if(!data?.length)return;const s=data[0];settingsId=s.id;storeNameInput.value=s.nome_loja||'';storeWhatsappInput.value=s.whatsapp||'';deliveryFeeInput.value=s.taxa_entrega||0;storeAddressInput.value=s.endereco||'';pixKeyInput.value=s.chave_pix||'';storeOpenInput.value=String(s.loja_aberta)}
+async function saveSettings(){const payload={nome_loja:storeNameInput.value.trim(),whatsapp:digits(storeWhatsappInput.value),taxa_entrega:Number(deliveryFeeInput.value.replace(',','.'))||0,endereco:storeAddressInput.value.trim(),chave_pix:pixKeyInput.value.trim(),loja_aberta:storeOpenInput.value==='true',atualizado_em:new Date().toISOString()};let error;if(settingsId)({error}=await db.from('configuracoes').update(payload).eq('id',settingsId));else{const r=await db.from('configuracoes').insert(payload).select().single();error=r.error;if(r.data)settingsId=r.data.id}if(error)return alert(error.message);alert('Configurações salvas.')}
+campaignTitle?.addEventListener('input',updateCampaignPreview);campaignLink.value=location.origin+'/';updateCampaignPreview();
+init();
+</script></body></html>
