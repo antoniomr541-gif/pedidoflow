@@ -1,0 +1,18 @@
+FLOW PEDIDOS 3.0 — INSTALAÇÃO
+
+1. No Supabase > SQL Editor, execute primeiro:
+   instalar-cliente-sem-email.sql
+
+2. Depois execute:
+   atualizar-whatsapp-imagens.sql
+
+3. Substitua TODOS os arquivos do projeto no GitHub pelos arquivos deste pacote.
+
+4. Na Vercel, faça um novo deploy sem cache.
+
+5. Teste em aba anônima.
+
+IMPORTANTE:
+- Clientes entram em login.html usando celular e senha.
+- Não crie clientes em Authentication > Users.
+- Apenas o dono usa o Supabase Authentication em dono.html.

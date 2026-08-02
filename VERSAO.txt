@@ -1,0 +1,8 @@
+FLOW PEDIDOS 3.0
+
+Cliente: cadastro e login por telefone + senha em tabela própria.
+Não utiliza Supabase Auth para clientes.
+Não cria e-mail fictício.
+Não sofre com "email rate limit exceeded" no cadastro do cliente.
+
+O dono continua usando Supabase Auth em dono.html.
