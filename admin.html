@@ -30,10 +30,76 @@
 
 <section id="clients" class="section hidden"><div class="card"><h2>Clientes cadastrados</h2><div id="clientsList" class="table-list"></div></div></section>
 
-<section id="promotions" class="section hidden"><div class="card"><h2>Central de promoções</h2><div class="notice">Somente clientes que autorizaram promoções aparecem aqui. O envio abre conversas individuais no WhatsApp.</div>
-<div class="promo-grid" style="margin-top:16px"><div><textarea id="promotionMessage" style="width:100%;min-height:160px;padding:12px;border:1px solid var(--border);border-radius:12px" placeholder="Escreva a promoção do dia"></textarea>
-<div class="row" style="margin-top:10px"><button class="btn btn-primary" onclick="openNextPromotion()">Abrir próximo cliente</button><button class="btn btn-light" onclick="copyPromotionNumbers()">Copiar números</button></div><p id="promotionProgress" class="muted"></p></div>
-<div><strong id="consentedCount">0 clientes</strong><div id="promotionCustomers"></div></div></div></div></section>
+<section id="promotions" class="section hidden">
+<div class="card campaign-shell">
+  <div class="row campaign-heading">
+    <div><div class="muted">Central de campanhas</div><h2>Promoções com imagem</h2><p class="muted">Envie banners dos combos para os clientes que autorizaram promoções.</p></div>
+    <span class="status-pill" id="whatsappApiStatus">API não configurada</span>
+  </div>
+
+  <div class="notice">O envio automático usa a API oficial do WhatsApp. Enquanto as credenciais não estiverem configuradas, você ainda pode baixar a imagem e copiar a legenda.</div>
+
+  <div class="campaign-layout">
+    <div class="campaign-form">
+      <label class="field-label" for="campaignTitle">Nome interno da campanha</label>
+      <input id="campaignTitle" class="field-control" placeholder="Ex.: Combo de domingo">
+
+      <label class="field-label" for="campaignImageFile">Banner da promoção</label>
+      <label class="upload-zone" for="campaignImageFile">
+        <input id="campaignImageFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewCampaignImage(this.files[0])">
+        <strong>Adicionar imagem</strong><span>JPG, PNG ou WEBP — recomendado 1080 × 1080</span>
+      </label>
+      <input id="campaignImageUrl" class="field-control" placeholder="Ou cole a URL pública da imagem" oninput="previewCampaignUrl(this.value)">
+
+      <label class="field-label" for="promotionMessage">Legenda da promoção</label>
+      <textarea id="promotionMessage" class="field-control campaign-text" maxlength="700" oninput="updateCampaignPreview()" placeholder="Ex.: Hoje tem Combo Família: 2 hambúrgueres, batata e refrigerante por R$ 49,90."></textarea>
+      <div class="row"><span class="muted">A legenda será enviada junto ao banner.</span><span class="muted"><b id="campaignChars">0</b>/700</span></div>
+
+      <label class="field-label" for="campaignLink">Link do botão “Pedir agora”</label>
+      <input id="campaignLink" class="field-control" placeholder="https://seusite.com/" oninput="updateCampaignPreview()">
+
+      <div class="campaign-audience">
+        <div><strong>Público</strong><div class="muted">Somente clientes que aceitaram promoções</div></div>
+        <strong id="consentedCount">0 clientes</strong>
+      </div>
+
+      <div class="campaign-actions">
+        <button id="sendCampaignButton" class="btn btn-success btn-large" onclick="sendAutomaticCampaign()">Enviar campanha automaticamente</button>
+        <button class="btn btn-light" onclick="copyPromotionMessage()">Copiar legenda</button>
+        <button class="btn btn-light" onclick="downloadCampaignImage()">Baixar imagem</button>
+        <button class="btn btn-light" onclick="exportPromotionCSV()">Exportar clientes</button>
+      </div>
+      <div id="campaignProgressWrap" class="campaign-progress hidden"><div id="campaignProgressBar"></div></div>
+      <p id="promotionProgress" class="muted"></p>
+    </div>
+
+    <aside class="phone-preview" aria-label="Prévia da mensagem">
+      <div class="phone-top">Prévia no WhatsApp</div>
+      <div class="whatsapp-bg">
+        <div class="message-bubble">
+          <div id="campaignImagePreview" class="campaign-image-placeholder"><span>Seu banner aparecerá aqui</span></div>
+          <div class="message-content">
+            <strong id="campaignPreviewTitle">Promoção especial</strong>
+            <p id="campaignPreviewText">Adicione uma imagem e escreva uma legenda curta.</p>
+            <small id="campaignPreviewTime">12:00 ✓✓</small>
+          </div>
+          <div id="campaignPreviewButton" class="message-cta">🔗 Pedir agora</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="card">
+  <div class="row"><div><h2>Clientes autorizados</h2><p class="muted">Estes contatos podem receber as campanhas.</p></div></div>
+  <div id="promotionCustomers" class="customer-grid"></div>
+</div>
+
+<div class="card">
+  <div class="row"><div><h2>Histórico de campanhas</h2><p class="muted">Acompanhe envios e falhas.</p></div><button class="btn btn-light" onclick="loadCampaignHistory()">Atualizar</button></div>
+  <div id="campaignHistory" class="table-list"><p class="muted">Nenhuma campanha enviada.</p></div>
+</div>
+</section>
 
 <section id="settings" class="section hidden"><div class="card"><h2>Configurações da loja</h2><div class="form-grid">
 <input id="storeNameInput" placeholder="Nome da loja"><input id="storeWhatsappInput" placeholder="WhatsApp da loja"><input id="deliveryFeeInput" placeholder="Taxa de entrega">
@@ -47,7 +113,7 @@
 
 <script>
 const db=supabase.createClient('https://ggdmqffnkpumjwmrqqzi.supabase.co','sb_publishable_FKN_oKLr3Ud0C5p6Sw77Uw_1P8w1hhc');
-let products=[],orders=[],clients=[],settingsId=null,editingId=null,promotionClients=[],promotionIndex=0;
+let products=[],orders=[],clients=[],settingsId=null,editingId=null,promotionClients=[],campaignImageFile=null,campaignImagePublicUrl='';
 const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const digits=v=>String(v||'').replace(/\D/g,'');
 
@@ -55,7 +121,7 @@ function showSection(id,btn){document.querySelectorAll('.section').forEach(s=>s.
 async function requireOwner(){const {data:{user}}=await db.auth.getUser();if(!user){location.href='dono.html';return false}const {data:p}=await db.from('perfis').select('role').eq('id',user.id).single();if(p?.role!=='dono'){await db.auth.signOut();location.href='dono.html';return false}return true}
 async function logout(){await db.auth.signOut();location.href='dono.html'}
 async function init(){if(!await requireOwner())return;await refreshAll();subscribeOrders()}
-async function refreshAll(){await Promise.all([loadProducts(),loadOrders(),loadClients(),loadSettings()])}
+async function refreshAll(){await Promise.all([loadProducts(),loadOrders(),loadClients(),loadSettings(),loadCampaignHistory()]);checkWhatsAppApi()}
 
 async function loadOrders(){
  const {data,error}=await db.from('pedidos').select('*').order('criado_em',{ascending:false}).limit(100);
@@ -116,18 +182,131 @@ async function loadClients(){
    </div></div>`).join(''):'<p class="muted">Nenhum cliente cadastrado.</p>';
  promotionClients=clients.filter(c=>c.aceita_promocoes&&c.whatsapp);
  consentedCount.textContent=`${promotionClients.length} cliente${promotionClients.length===1?'':'s'}`;
- promotionCustomers.innerHTML=promotionClients.length?promotionClients.map((c,i)=>`
-   <div class="list-item"><div class="row">
-     <div><strong>${c.nome}</strong><div class="muted">${c.whatsapp}</div></div>
-     <button class="btn btn-light" onclick="openPromotionFor(${i})">Enviar</button>
-   </div></div>`).join(''):'<p class="muted">Nenhum cliente autorizado.</p>';
+ promotionCustomers.innerHTML=promotionClients.length?promotionClients.map(c=>`
+   <div class="customer-card"><div class="customer-avatar">${(c.nome||'C').slice(0,1).toUpperCase()}</div><div><strong>${c.nome||'Cliente'}</strong><div class="muted">${c.whatsapp}</div></div><span class="status-pill">Autorizado</span></div>`).join(''):'<p class="muted">Nenhum cliente autorizado.</p>';
 }
-function promotionText(){const m=promotionMessage.value.trim();if(!m){alert('Escreva a promoção.');return null}return `${m}\n\nPeça aqui: ${location.origin}/\n\nResponda SAIR para não receber mais promoções.`}
-function openPromotionFor(i){const text=promotionText();if(!text)return;let phone=digits(promotionClients[i].whatsapp);if(!phone.startsWith('55'))phone='55'+phone;window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`,'_blank')}
-function openNextPromotion(){if(!promotionClients.length)return alert('Nenhum cliente autorizado.');if(promotionIndex>=promotionClients.length)promotionIndex=0;openPromotionFor(promotionIndex);promotionIndex++;promotionProgress.textContent=`Preparado ${promotionIndex} de ${promotionClients.length}.`}
-async function copyPromotionNumbers(){const t=promotionClients.map(c=>`${c.nome} - ${c.whatsapp}`).join('\n');await navigator.clipboard.writeText(t);alert('Copiado.')}
+
+function updateCampaignPreview(){
+  const text=promotionMessage.value.trim();
+  campaignChars.textContent=promotionMessage.value.length;
+  campaignPreviewTitle.textContent=campaignTitle.value.trim()||'Promoção especial';
+  campaignPreviewText.textContent=text||'Adicione uma imagem e escreva uma legenda curta.';
+  campaignPreviewButton.style.display=campaignLink.value.trim()?'block':'none';
+}
+
+function previewCampaignImage(file){
+  if(!file)return;
+  if(file.size>5*1024*1024){campaignImageFile.value='';return alert('A imagem deve ter no máximo 5 MB.');}
+  campaignImageFile=file;
+  const url=URL.createObjectURL(file);
+  campaignImagePreview.innerHTML=`<img src="${url}" alt="Prévia do banner">`;
+}
+function previewCampaignUrl(url){
+  campaignImagePublicUrl=url.trim();
+  if(campaignImagePublicUrl)campaignImagePreview.innerHTML=`<img src="${campaignImagePublicUrl}" alt="Prévia do banner" onerror="this.parentElement.innerHTML='<span>Não foi possível carregar a imagem</span>'">`;
+}
+async function uploadCampaignImage(){
+  if(campaignImageFile){
+    const ext=(campaignImageFile.name.split('.').pop()||'jpg').toLowerCase();
+    const path=`campanhas/${new Date().toISOString().slice(0,10)}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const {error}=await db.storage.from('promocoes').upload(path,campaignImageFile,{contentType:campaignImageFile.type,upsert:false});
+    if(error)throw error;
+    campaignImagePublicUrl=db.storage.from('promocoes').getPublicUrl(path).data.publicUrl;
+    campaignImageUrl.value=campaignImagePublicUrl;
+  }
+  if(!campaignImagePublicUrl)campaignImagePublicUrl=campaignImageUrl.value.trim();
+  if(!campaignImagePublicUrl)throw new Error('Adicione o banner da promoção.');
+  return campaignImagePublicUrl;
+}
+function promotionText(){
+  const message=promotionMessage.value.trim();
+  if(!message){alert('Escreva a legenda da promoção.');return null;}
+  return `${message}
+
+Peça agora: ${campaignLink.value.trim()||location.origin+'/'}
+
+Responda SAIR para não receber novas promoções.`;
+}
+async function copyPromotionMessage(){const text=promotionText();if(!text)return;await navigator.clipboard.writeText(text);promotionProgress.textContent='Legenda copiada.';}
+async function downloadCampaignImage(){
+  let url=campaignImagePublicUrl||campaignImageUrl.value.trim();
+  if(campaignImageFile){const a=document.createElement('a');a.href=URL.createObjectURL(campaignImageFile);a.download=campaignImageFile.name||'promocao.jpg';a.click();return;}
+  if(!url)return alert('Adicione uma imagem.');
+  window.open(url,'_blank');
+}
+async function checkWhatsAppApi(){
+  try{const r=await fetch('/.netlify/functions/whatsapp-status');const data=await r.json();whatsappApiStatus.textContent=data.configured?'API configurada':'API não configurada';whatsappApiStatus.classList.toggle('api-ready',!!data.configured)}catch{whatsappApiStatus.textContent='API não configurada'}
+}
+function setCampaignProgress(done,total,text){campaignProgressWrap.classList.remove('hidden');campaignProgressBar.style.width=`${Math.round((done/Math.max(total,1))*100)}%`;promotionProgress.textContent=text;}
+async function sendAutomaticCampaign(){
+  if(!promotionClients.length)return alert('Nenhum cliente autorizou promoções.');
+  const title=campaignTitle.value.trim()||'Campanha sem título';
+  const message=promotionMessage.value.trim();
+  if(!message)return alert('Escreva a legenda da promoção.');
+  const link=campaignLink.value.trim()||location.origin+'/';
+  let imageUrl;try{sendCampaignButton.disabled=true;sendCampaignButton.textContent='Preparando...';imageUrl=await uploadCampaignImage()}catch(e){sendCampaignButton.disabled=false;sendCampaignButton.textContent='Enviar campanha automaticamente';return alert(e.message)}
+  const {data:{session}}=await db.auth.getSession();
+  if(!session){sendCampaignButton.disabled=false;return alert('Sua sessão expirou. Entre novamente.');}
+  const batchSize=20;let sent=0,failed=0;
+  setCampaignProgress(0,promotionClients.length,'Iniciando campanha...');
+  for(let i=0;i<promotionClients.length;i+=batchSize){
+    const recipients=promotionClients.slice(i,i+batchSize).map(c=>({id:c.id,nome:c.nome,whatsapp:c.whatsapp}));
+    try{
+      const response=await fetch('/.netlify/functions/send-whatsapp-campaign',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({title,message,imageUrl,link,recipients})});
+      const result=await response.json();if(!response.ok)throw new Error(result.error||'Falha ao enviar campanha.');sent+=result.sent||0;failed+=result.failed||0;
+    }catch(e){failed+=recipients.length;promotionProgress.textContent=e.message;}
+    setCampaignProgress(Math.min(i+batchSize,promotionClients.length),promotionClients.length,`Enviadas: ${sent} · Falhas: ${failed}`);
+  }
+  sendCampaignButton.disabled=false;sendCampaignButton.textContent='Enviar campanha automaticamente';
+  await loadCampaignHistory();
+  alert(`Campanha concluída. Enviadas: ${sent}. Falhas: ${failed}.`);
+}
+async function loadCampaignHistory(){
+  if(!document.getElementById('campaignHistory'))return;
+  const {data,error}=await db.from('campanhas').select('*').order('criado_em',{ascending:false}).limit(20);
+  if(error){campaignHistory.innerHTML='<p class="muted">Execute o arquivo atualizar-whatsapp-imagens.sql para ativar o histórico.</p>';return;}
+  campaignHistory.innerHTML=data?.length?data.map(c=>`<div class="list-item campaign-history-item"><img src="${c.imagem_url||''}" alt=""><div><strong>${c.titulo}</strong><div class="muted">${new Date(c.criado_em).toLocaleString('pt-BR')} · ${c.enviados||0} enviados · ${c.falhas||0} falhas</div></div><span class="status-pill">${c.status||'Concluída'}</span></div>`).join(''):'<p class="muted">Nenhuma campanha enviada.</p>';
+}
+
+function escapeCSV(value){
+  const text=String(value??'').replace(/"/g,'""');
+  return `"${text}"`;
+}
+
+function exportPromotionCSV(){
+  if(!promotionClients.length){
+    alert('Nenhum cliente autorizou promoções.');
+    return;
+  }
+
+  const rows=[
+    ['Nome','Telefone','Observação'],
+    ...promotionClients.map(c=>[
+      c.nome||'Cliente',
+      c.whatsapp||'',
+      'Autorizou promoções no PedidoFlow'
+    ])
+  ];
+
+  const csv='\uFEFF'+rows
+    .map(row=>row.map(escapeCSV).join(';'))
+    .join('\n');
+
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;
+  link.download=`clientes-promocoes-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+
+  promotionProgress.textContent=`CSV gerado com ${promotionClients.length} cliente(s).`;
+}
 
 async function loadSettings(){const {data}=await db.from('configuracoes').select('*').order('id').limit(1);if(!data?.length)return;const s=data[0];settingsId=s.id;storeNameInput.value=s.nome_loja||'';storeWhatsappInput.value=s.whatsapp||'';deliveryFeeInput.value=s.taxa_entrega||0;storeAddressInput.value=s.endereco||'';pixKeyInput.value=s.chave_pix||'';storeOpenInput.value=String(s.loja_aberta)}
 async function saveSettings(){const payload={nome_loja:storeNameInput.value.trim(),whatsapp:digits(storeWhatsappInput.value),taxa_entrega:Number(deliveryFeeInput.value.replace(',','.'))||0,endereco:storeAddressInput.value.trim(),chave_pix:pixKeyInput.value.trim(),loja_aberta:storeOpenInput.value==='true',atualizado_em:new Date().toISOString()};let error;if(settingsId)({error}=await db.from('configuracoes').update(payload).eq('id',settingsId));else{const r=await db.from('configuracoes').insert(payload).select().single();error=r.error;if(r.data)settingsId=r.data.id}if(error)return alert(error.message);alert('Configurações salvas.')}
+campaignTitle?.addEventListener('input',updateCampaignPreview);campaignLink.value=location.origin+'/';updateCampaignPreview();
 init();
 </script></body></html>
